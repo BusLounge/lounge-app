@@ -117,7 +117,22 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const SizedBox(height: AppSpacing.large),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: IconButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pushReplacementNamed(
+                                      AppConstants.roleSelectionRoute,
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.arrow_back_rounded,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  tooltip: 'Back',
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.small),
 
                               // Icon with gradient background
                               Center(

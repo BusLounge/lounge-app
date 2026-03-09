@@ -9,7 +9,7 @@ class ApiConfig {
   // Android Emulator: http://10.0.2.2:8080
   // iOS Simulator: http://localhost:8080
   // Physical Device/Mac: http://localhost:8080 or your machine's IP (e.g., http://192.168.x.x:8080)
-  static const String localBaseUrl = 'http://192.168.98.79:8080';
+  static const String localBaseUrl = 'http://10.0.2.2:8080';
 
   // Kept for backward compatibility
   static const String choreoBaseUrl = localBaseUrl;

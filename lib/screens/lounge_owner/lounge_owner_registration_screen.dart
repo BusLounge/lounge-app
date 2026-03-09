@@ -588,12 +588,18 @@ class _LoungeOwnerRegistrationScreenState
                 child: TextFormField(
                   controller: _stateController,
                   decoration: InputDecoration(
-                    labelText: 'State/Province',
+                    labelText: 'State/Province *',
                     hintText: 'e.g., Western',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Province is required';
+                    }
+                    return null;
+                  },
                 ),
               ),
               const SizedBox(width: 16),
@@ -601,13 +607,19 @@ class _LoungeOwnerRegistrationScreenState
                 child: TextFormField(
                   controller: _postalCodeController,
                   decoration: InputDecoration(
-                    labelText: 'Postal Code',
+                    labelText: 'Postal Code *',
                     hintText: 'e.g., 10100',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Postal code is required';
+                    }
+                    return null;
+                  },
                 ),
               ),
             ],

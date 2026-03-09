@@ -21,9 +21,7 @@ abstract class DriverRemoteDataSource {
 
   /// Get all drivers for a lounge
   /// GET /api/v1/lounges/:lounge_id/drivers
-  Future<List<DriverModel>> getDriversByLounge({
-    required String loungeId,
-  });
+  Future<List<DriverModel>> getDriversByLounge({required String loungeId});
 
   /// Assign driver to booking
   /// POST /api/v1/lounge-booking-driver-assignments
@@ -42,29 +40,33 @@ class DriverRemoteDataSourceImpl implements DriverRemoteDataSource {
   final _secureStorage = const FlutterSecureStorage();
 
   DriverRemoteDataSourceImpl() {
-    _dio = Dio(BaseOptions(
-      baseUrl: ApiConfig.getLoungeBaseUrl(),
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: ApiConfig.getLoungeBaseUrl(),
+        connectTimeout: ApiConfig.connectTimeout,
+        receiveTimeout: ApiConfig.receiveTimeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
 
     // Add auth interceptor
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _secureStorage.read(key: 'access_token');
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-          print('🔐 Driver API: Token added to request');
-        } else {
-          print('⚠️ Driver API: No token found in storage');
-        }
-        return handler.next(options);
-      },
-    ));
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await _secureStorage.read(key: 'access_token');
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+            print('🔐 Driver API: Token added to request');
+          } else {
+            print('⚠️ Driver API: No token found in storage');
+          }
+          return handler.next(options);
+        },
+      ),
+    );
   }
 
   @override
@@ -79,7 +81,8 @@ class DriverRemoteDataSourceImpl implements DriverRemoteDataSource {
     try {
       print('📤 [DRIVER API] Adding driver to lounge: $loungeId');
       print(
-          '📤 [DRIVER API] Driver data: name=$fullName, nic=$nicNumber, vehicle=$vehicleNumber, type=$vehicleType');
+        '📤 [DRIVER API] Driver data: name=$fullName, nic=$nicNumber, vehicle=$vehicleNumber, type=$vehicleType',
+      );
 
       final response = await _dio.post(
         '/api/v1/lounges/drivers',
@@ -162,29 +165,34 @@ class DriverRemoteDataSourceImpl implements DriverRemoteDataSource {
 
   List<Map<String, dynamic>> _extractDriverList(dynamic responseData) {
     print(
-        '📤 [DRIVER API] Extracting driver list from: ${responseData.runtimeType}');
+      '📤 [DRIVER API] Extracting driver list from: ${responseData.runtimeType}',
+    );
 
     // Handle direct array response
     if (responseData is List) {
       print(
-          '📤 [DRIVER API] Response is a direct List with ${responseData.length} items');
+        '📤 [DRIVER API] Response is a direct List with ${responseData.length} items',
+      );
       return responseData.whereType<Map<String, dynamic>>().toList();
     }
 
     // Handle Map response with various possible keys
     if (responseData is Map<String, dynamic>) {
       print(
-          '📤 [DRIVER API] Response is a Map with keys: ${responseData.keys.join(", ")}');
+        '📤 [DRIVER API] Response is a Map with keys: ${responseData.keys.join(", ")}',
+      );
 
       // Try common wrapper keys
-      final dynamic unwrapped = responseData['drivers'] ??
+      final dynamic unwrapped =
+          responseData['drivers'] ??
           responseData['data'] ??
           responseData['result'] ??
           responseData['items'];
 
       if (unwrapped is List) {
         print(
-            '📤 [DRIVER API] Found list in wrapper with ${unwrapped.length} items');
+          '📤 [DRIVER API] Found list in wrapper with ${unwrapped.length} items',
+        );
         return unwrapped.whereType<Map<String, dynamic>>().toList();
       }
 
@@ -194,7 +202,8 @@ class DriverRemoteDataSourceImpl implements DriverRemoteDataSource {
             unwrapped['drivers'] ?? unwrapped['data'] ?? unwrapped['items'];
         if (nestedList is List) {
           print(
-              '📤 [DRIVER API] Found list in nested wrapper with ${nestedList.length} items');
+            '📤 [DRIVER API] Found list in nested wrapper with ${nestedList.length} items',
+          );
           return nestedList.whereType<Map<String, dynamic>>().toList();
         }
       }
@@ -276,7 +285,7 @@ class DriverRemoteDataSourceImpl implements DriverRemoteDataSource {
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.sendTimeout) {
       return const NetworkException(
-        'Connection timeout. Please check if the backend server is running on http://10.0.2.2:8080',
+        'Connection timeout. Please check if the backend server is running on http://192.168.79.79:8080',
       );
     }
 

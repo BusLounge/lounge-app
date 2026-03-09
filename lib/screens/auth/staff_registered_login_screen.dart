@@ -166,6 +166,14 @@ class _StaffRegisteredLoginScreenState
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () {
+              Navigator.of(context).pushReplacementNamed(
+                AppConstants.roleSelectionRoute,
+              );
+            },
+          ),
           title: const Text('Registered Staff Login'),
           backgroundColor: AppColors.primary,
           elevation: 0,

@@ -63,29 +63,33 @@ class LoungeStaffRemoteDataSourceImpl implements LoungeStaffRemoteDataSource {
 
   LoungeStaffRemoteDataSourceImpl({required this.apiClient}) {
     // Create dedicated Dio instance for local lounge backend
-    _loungeDio = Dio(BaseOptions(
-      baseUrl: ApiConfig.getLoungeBaseUrl(),
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ));
+    _loungeDio = Dio(
+      BaseOptions(
+        baseUrl: ApiConfig.getLoungeBaseUrl(),
+        connectTimeout: ApiConfig.connectTimeout,
+        receiveTimeout: ApiConfig.receiveTimeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
 
     // Add auth interceptor to include JWT token from secure storage
-    _loungeDio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _secureStorage.read(key: 'access_token');
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-          print('🔐 Lounge API: Token added to request');
-        } else {
-          print('⚠️ Lounge API: No token found in storage');
-        }
-        return handler.next(options);
-      },
-    ));
+    _loungeDio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await _secureStorage.read(key: 'access_token');
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+            print('🔐 Lounge API: Token added to request');
+          } else {
+            print('⚠️ Lounge API: No token found in storage');
+          }
+          return handler.next(options);
+        },
+      ),
+    );
   }
 
   @override
@@ -107,7 +111,8 @@ class LoungeStaffRemoteDataSourceImpl implements LoungeStaffRemoteDataSource {
       print('📤 [LOUNGE API] Base URL: $baseUrl');
       print('📤 [LOUNGE API] Endpoint: $endpoint');
       print(
-          '📤 [LOUNGE API] Staff data: fullName=$fullName, nic=$nicNumber, phone=$phone, email=$email, hiredDate=$hiredDate');
+        '📤 [LOUNGE API] Staff data: fullName=$fullName, nic=$nicNumber, phone=$phone, email=$email, hiredDate=$hiredDate',
+      );
 
       // Check if we have auth token
       final token = await _secureStorage.read(key: 'access_token');
@@ -222,9 +227,7 @@ class LoungeStaffRemoteDataSourceImpl implements LoungeStaffRemoteDataSource {
     try {
       final response = await _loungeDio.get(
         '/api/v1/lounges/$loungeId/staff/approval-filter',
-        queryParameters: {
-          'approval_status': approvalStatus,
-        },
+        queryParameters: {'approval_status': approvalStatus},
       );
 
       if (response.data == null) {
@@ -268,9 +271,7 @@ class LoungeStaffRemoteDataSourceImpl implements LoungeStaffRemoteDataSource {
         return response.data as Map<String, dynamic>;
       }
 
-      return {
-        'message': 'Staff approval status updated successfully',
-      };
+      return {'message': 'Staff approval status updated successfully'};
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
@@ -301,7 +302,7 @@ class LoungeStaffRemoteDataSourceImpl implements LoungeStaffRemoteDataSource {
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.sendTimeout) {
       return const NetworkException(
-        'Connection timeout. Please check if the backend server is running on http://10.0.2.2:8080',
+        'Connection timeout. Please check if the backend server is running on http://192.168.79.79:8080',
       );
     }
 
@@ -354,7 +355,8 @@ class LoungeStaffRemoteDataSourceImpl implements LoungeStaffRemoteDataSource {
     }
 
     if (responseData is Map<String, dynamic>) {
-      final dynamic unwrapped = responseData['staff'] ??
+      final dynamic unwrapped =
+          responseData['staff'] ??
           responseData['data'] ??
           responseData['result'];
 
