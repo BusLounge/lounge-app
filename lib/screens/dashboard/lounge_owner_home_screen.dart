@@ -13,6 +13,7 @@ import '../staff/staff_list_page.dart';
 import '../addtuk/add_tuk_tuk_page.dart';
 import '../bus_sedule/upcoming_bus_schedule.dart';
 import '../lounge/edit_lounge_details_page.dart';
+import '../lounge/lounge_details_page.dart';
 import '../booking/today_bookings_screen.dart';
 import '../addtuk/tuktuk_service_settings.dart';
 import '../addtuk/driver_list_page.dart';
@@ -705,12 +706,10 @@ class _LoungeOwnerHomeScreenState extends State<LoungeOwnerHomeScreen> {
   Widget _buildLoungeCard(Lounge lounge) {
     return InkWell(
       onTap: () {
-        // Navigate to lounge details
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Lounge details for ${lounge.loungeName} coming soon!',
-            ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LoungeDetailsPage(lounge: lounge),
           ),
         );
       },
