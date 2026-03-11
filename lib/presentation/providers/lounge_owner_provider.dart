@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/lounge_owner.dart';
 import '../../domain/entities/registration_progress.dart';
+import '../../domain/repositories/lounge_owner_repository.dart';
 import '../../domain/usecases/save_business_info.dart';
 import '../../domain/usecases/upload_nic_images.dart';
 import '../../domain/usecases/get_registration_progress.dart';
@@ -15,6 +16,7 @@ class LoungeOwnerProvider with ChangeNotifier {
   final GetRegistrationProgress getRegistrationProgressUseCase;
   final CheckOCRBlock checkOCRBlockUseCase;
   final GetProfile getProfileUseCase;
+  final LoungeOwnerRepository loungeOwnerRepository;
 
   LoungeOwnerProvider({
     required this.saveBusinessInfoUseCase,
@@ -22,6 +24,7 @@ class LoungeOwnerProvider with ChangeNotifier {
     required this.getRegistrationProgressUseCase,
     required this.checkOCRBlockUseCase,
     required this.getProfileUseCase,
+    required this.loungeOwnerRepository,
   });
 
   // State
@@ -200,33 +203,29 @@ class LoungeOwnerProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    try {
-      // We need to use the repository directly since there's no use case for this
-      // For now, we'll just reload the profile after attempting the update
-      // The actual update call should be done through a use case (future enhancement)
+    final result = await loungeOwnerRepository.updateProfile(
+      businessName: businessName,
+      businessLicense: businessLicense,
+      managerFullName: managerFullName,
+      managerNicNumber: managerNicNumber,
+      managerEmail: managerEmail,
+      district: district,
+    );
 
-      // This is a placeholder - actual implementation would need a use case
-      // similar to SaveBusinessInfo
-      if (_profile != null) {
-        _profile = _profile!.copyWith(
-          businessName: businessName ?? _profile!.businessName,
-          businessLicense: businessLicense ?? _profile!.businessLicense,
-          managerFullName: managerFullName ?? _profile!.managerFullName,
-          managerNicNumber: managerNicNumber ?? _profile!.managerNicNumber,
-          managerEmail: managerEmail ?? _profile!.managerEmail,
-          district: district ?? _profile!.district,
-        );
-      }
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = 'Failed to update profile: ${e.toString()}';
-      notifyListeners();
-      return false;
-    }
+    return result.fold(
+      (failure) {
+        _isLoading = false;
+        _errorMessage = failure.message;
+        notifyListeners();
+        return false;
+      },
+      (profile) {
+        _isLoading = false;
+        _profile = profile;
+        notifyListeners();
+        return true;
+      },
+    );
   }
 
   /// Clear all data

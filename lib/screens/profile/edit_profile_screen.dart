@@ -14,6 +14,10 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _nicController = TextEditingController();
+  final _districtController = TextEditingController();
   bool _isLoading = false;
 
   @override
@@ -36,6 +40,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     _fullNameController.text =
         loungeOwner?.managerFullName ?? user?.firstName ?? '';
+    _emailController.text = loungeOwner?.managerEmail ?? user?.email ?? '';
+    _phoneController.text = user?.phoneNumber ?? '';
+    _nicController.text = loungeOwner?.managerNicNumber ?? user?.nic ?? '';
+    _districtController.text = loungeOwner?.district ?? '';
   }
 
   Future<void> _saveProfile() async {
@@ -58,16 +66,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         throw Exception('User not loaded');
       }
 
-      // Update user profile with new name
-      final updatedUser = currentUser.copyWith(
-        firstName: _fullNameController.text.trim(),
+      final loungeOwnerProvider = Provider.of<LoungeOwnerProvider>(
+        context,
+        listen: false,
       );
 
-      final success = await authProvider.updateUserProfile(updatedUser);
+      // Update user profile (local cache)
+      final updatedUser = currentUser.copyWith(
+        firstName: _fullNameController.text.trim(),
+        email: _emailController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        nic: _nicController.text.trim(),
+      );
+
+      final authUpdateSuccess = await authProvider.updateUserProfile(
+        updatedUser,
+      );
+
+      final ownerUpdateSuccess = await loungeOwnerProvider.updateProfile(
+        managerFullName: _fullNameController.text.trim(),
+        managerEmail: _emailController.text.trim(),
+        managerNicNumber: _nicController.text.trim(),
+        district: _districtController.text.trim(),
+      );
+
+      if (ownerUpdateSuccess) {
+        await loungeOwnerProvider.getLoungeOwnerProfile();
+      }
 
       if (!mounted) return;
 
-      if (success) {
+      if (authUpdateSuccess && ownerUpdateSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Profile updated successfully!'),
@@ -82,7 +111,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Navigator.pop(context);
       } else {
         throw Exception(
-          authProvider.error ?? 'Failed to update profile',
+          loungeOwnerProvider.error ??
+              authProvider.error ??
+              'Failed to update profile',
         );
       }
     } catch (e) {
@@ -108,6 +139,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void dispose() {
     _fullNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _nicController.dispose();
+    _districtController.dispose();
     super.dispose();
   }
 
@@ -265,7 +300,72 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                 const SizedBox(height: 24),
 
-                // Phone Number (Read Only)
+                const Text(
+                  'Manager Email',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'Enter manager email',
+                    hintStyle: TextStyle(
+                      color: AppColors.textSecondary.withOpacity(0.5),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: AppColors.primary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.error),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.error,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter manager email';
+                    }
+                    final emailPattern = RegExp(
+                      r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+                    );
+                    if (!emailPattern.hasMatch(value.trim())) {
+                      return 'Please enter a valid email address';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
                 const Text(
                   'Phone Number',
                   style: TextStyle(
@@ -275,59 +375,183 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Consumer<AuthProvider>(
-                  builder: (context, authProvider, _) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: 'Enter phone number',
+                    hintStyle: TextStyle(
+                      color: AppColors.textSecondary.withOpacity(0.5),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.phone_outlined,
+                      color: AppColors.primary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
                       ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.error),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.error,
+                        width: 2,
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.phone_outlined,
-                            color: AppColors.textSecondary,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            authProvider.user?.phoneNumber ?? 'Not available',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.info.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Verified',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.info,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter phone number';
+                    }
+                    if (value.trim().length < 10) {
+                      return 'Please enter a valid phone number';
+                    }
+                    return null;
                   },
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
+
+                const Text(
+                  'Manager NIC Number',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _nicController,
+                  keyboardType: TextInputType.text,
+                  decoration: InputDecoration(
+                    hintText: 'Enter manager NIC number',
+                    hintStyle: TextStyle(
+                      color: AppColors.textSecondary.withOpacity(0.5),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.badge_outlined,
+                      color: AppColors.primary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.error),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.error,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter manager NIC number';
+                    }
+                    if (value.trim().length < 10) {
+                      return 'Please enter a valid NIC number';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
+                const Text(
+                  'District',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _districtController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    hintText: 'Enter district',
+                    hintStyle: TextStyle(
+                      color: AppColors.textSecondary.withOpacity(0.5),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.location_on_outlined,
+                      color: AppColors.primary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.error),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.error,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter district';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
                 // Save Button
                 SizedBox(

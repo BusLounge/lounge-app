@@ -262,6 +262,7 @@ class InjectionContainer {
       getRegistrationProgressUseCase: _getRegistrationProgressUseCase,
       checkOCRBlockUseCase: _checkOCRBlockUseCase,
       getProfileUseCase: _getProfileUseCase,
+      loungeOwnerRepository: _loungeOwnerRepository,
     );
 
     _registrationProvider = RegistrationProvider(
