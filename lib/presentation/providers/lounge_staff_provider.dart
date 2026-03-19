@@ -256,6 +256,7 @@ class LoungeStaffProvider extends ChangeNotifier {
   /// Update my staff profile
   Future<bool> updateProfile({
     String? fullName,
+    String? phone,
     String? nicNumber,
     String? email,
     String? notes,
@@ -267,6 +268,7 @@ class LoungeStaffProvider extends ChangeNotifier {
     try {
       await remoteDataSource.updateProfile(
         fullName: fullName,
+        phone: phone,
         nicNumber: nicNumber,
         email: email,
         notes: notes,
@@ -276,6 +278,7 @@ class LoungeStaffProvider extends ChangeNotifier {
       if (_selectedStaff != null) {
         _selectedStaff = _selectedStaff!.copyWith(
           fullName: fullName ?? _selectedStaff!.fullName,
+          phone: phone ?? _selectedStaff!.phone,
           nicNumber: nicNumber ?? _selectedStaff!.nicNumber,
           email: email ?? _selectedStaff!.email,
           notes: notes ?? _selectedStaff!.notes,

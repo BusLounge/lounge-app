@@ -182,7 +182,8 @@ class DriverRemoteDataSourceImpl implements DriverRemoteDataSource {
           sendTimeout: const Duration(seconds: 60),
           receiveTimeout: const Duration(seconds: 60),
           responseType: ResponseType.plain,
-          validateStatus: (status) => status != null && status >= 200 && status < 300,
+          validateStatus: (status) =>
+              status != null && status >= 200 && status < 300,
         ),
       );
 
@@ -224,8 +225,7 @@ class DriverRemoteDataSourceImpl implements DriverRemoteDataSource {
       );
 
       // Try common wrapper keys
-      final dynamic unwrapped =
-          responseData['drivers'] ??
+      final dynamic unwrapped = responseData['drivers'] ??
           responseData['data'] ??
           responseData['result'] ??
           responseData['items'];

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme_config.dart';
-import '../../domain/entities/user.dart';
 import '../../presentation/providers/auth_provider.dart';
+import '../../presentation/providers/lounge_staff_provider.dart';
 
 class StaffEditProfilePage extends StatefulWidget {
   const StaffEditProfilePage({super.key});
@@ -14,22 +14,44 @@ class StaffEditProfilePage extends StatefulWidget {
 class _StaffEditProfilePageState extends State<StaffEditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
+  late TextEditingController _phoneCtrl;
   late TextEditingController _nicCtrl;
+  late TextEditingController _emailCtrl;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final loungeStaffProvider = Provider.of<LoungeStaffProvider>(
+      context,
+      listen: false,
+    );
     final user = authProvider.user;
-    _nameCtrl = TextEditingController(text: user?.firstName ?? '');
-    _nicCtrl = TextEditingController(text: user?.nic ?? '');
+    final staff = loungeStaffProvider.selectedStaff;
+
+    _nameCtrl = TextEditingController(
+      text: staff?.fullName ?? user?.firstName ?? '',
+    );
+    _phoneCtrl = TextEditingController(
+      text: staff?.phone ?? user?.phoneNumber ?? '',
+    );
+    _nicCtrl = TextEditingController(text: staff?.nicNumber ?? user?.nic ?? '');
+    _emailCtrl = TextEditingController(text: staff?.email ?? user?.email ?? '');
+
+    if (staff == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        loungeStaffProvider.getMyStaffProfile();
+      });
+    }
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _phoneCtrl.dispose();
     _nicCtrl.dispose();
+    _emailCtrl.dispose();
     super.dispose();
   }
 
@@ -44,20 +66,41 @@ class _StaffEditProfilePageState extends State<StaffEditProfilePage> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final loungeStaffProvider = Provider.of<LoungeStaffProvider>(
+        context,
+        listen: false,
+      );
+
+      final success = await loungeStaffProvider.updateProfile(
+        fullName: _nameCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim(),
+        nicNumber: _nicCtrl.text.trim().toUpperCase(),
+        email: _emailCtrl.text.trim(),
+      );
+
+      if (!success) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              loungeStaffProvider.error ?? 'Failed to update profile',
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+        return;
+      }
 
       if (authProvider.user != null) {
-        final updatedUser = User(
-          id: authProvider.user!.id,
-          phoneNumber: authProvider.user!.phoneNumber,
-          email: authProvider.user!.email,
+        final updatedUser = authProvider.user!.copyWith(
           firstName: _nameCtrl.text.trim(),
-          lastName: authProvider.user!.lastName,
-          nic: _nicCtrl.text.trim(),
-          roles: authProvider.user!.roles,
-          profileCompleted: true,
-          phoneVerified: authProvider.user!.phoneVerified,
-          status: authProvider.user!.status,
-          createdAt: authProvider.user!.createdAt,
+          phoneNumber: _phoneCtrl.text.trim(),
+          nic: _nicCtrl.text.trim().toUpperCase(),
+          email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
           updatedAt: DateTime.now(),
         );
 
@@ -260,7 +303,7 @@ class _StaffEditProfilePageState extends State<StaffEditProfilePage> {
 
                 const SizedBox(height: 24),
 
-                // Phone Number (Read Only)
+                // Phone Number
                 const Text(
                   'Phone Number',
                   style: TextStyle(
@@ -270,55 +313,126 @@ class _StaffEditProfilePageState extends State<StaffEditProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Consumer<AuthProvider>(
-                  builder: (context, authProvider, _) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
+                TextFormField(
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your phone number',
+                    hintStyle: TextStyle(
+                      color: AppColors.textSecondary.withOpacity(0.5),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.phone_outlined,
+                      color: AppColors.primary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
                       ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.error),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.error,
+                        width: 2,
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.phone_outlined,
-                            color: AppColors.textSecondary,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            authProvider.user?.phoneNumber ?? 'Not available',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.info.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Verified',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.info,
-                              ),
-                            ),
-                          ),
-                        ],
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your phone number';
+                    }
+
+                    final normalized = value.trim().replaceAll(' ', '');
+                    final phonePattern = RegExp(r'^\+?\d{10,15}$');
+                    if (!phonePattern.hasMatch(normalized)) {
+                      return 'Invalid phone number (10-15 digits)';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
+                // Email Field
+                const Text(
+                  'Email',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your email',
+                    hintStyle: TextStyle(
+                      color: AppColors.textSecondary.withOpacity(0.5),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: AppColors.primary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
                       ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.error),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.error,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your email';
+                    }
+
+                    final emailRegex = RegExp(
+                      r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$',
                     );
+                    if (!emailRegex.hasMatch(value.trim())) {
+                      return 'Please enter a valid email address';
+                    }
+                    return null;
                   },
                 ),
 

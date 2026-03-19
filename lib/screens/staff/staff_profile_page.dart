@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/staff_bottom_nav_bar.dart';
-import '../../screens/splash_screen.dart';
 import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/providers/lounge_staff_provider.dart';
 import 'staff_edit_profile_page.dart';
@@ -14,6 +13,54 @@ class StaffProfilePage extends StatefulWidget {
 }
 
 class _StaffProfilePageState extends State<StaffProfilePage> {
+  Future<void> _confirmAndLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Do you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout != true) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final loungeStaffProvider = Provider.of<LoungeStaffProvider>(
+      context,
+      listen: false,
+    );
+
+    try {
+      await authProvider.logout();
+    } catch (_) {
+      // Always continue to login screen even if remote logout fails.
+    }
+
+    loungeStaffProvider.reset();
+
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/staff-registered-login',
+      (route) => false,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -175,13 +222,19 @@ class _StaffProfilePageState extends State<StaffProfilePage> {
             _ActionTile(
               icon: Icons.edit,
               title: 'Edit Profile',
-              onTap: () {
-                Navigator.push(
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const StaffEditProfilePage(),
                   ),
                 );
+
+                if (!mounted) return;
+                await Provider.of<LoungeStaffProvider>(
+                  context,
+                  listen: false,
+                ).getMyStaffProfile();
               },
             ),
 
@@ -191,20 +244,7 @@ class _StaffProfilePageState extends State<StaffProfilePage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () async {
-                  final authProvider = Provider.of<AuthProvider>(
-                    context,
-                    listen: false,
-                  );
-                  await authProvider.logout();
-                  // Navigate to Splash and clear stack
-                  if (!context.mounted) return;
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SplashScreen()),
-                    (route) => false,
-                  );
-                },
+                onPressed: _confirmAndLogout,
                 icon: const Icon(Icons.logout),
                 label: const Text('Logout'),
                 style: ElevatedButton.styleFrom(

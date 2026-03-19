@@ -46,6 +46,18 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Camera access is required to scan booking QR codes.</string>
+	<string>Camera access is required to scan booking QR codes and capture NIC images for OCR validation.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo library access is required to select NIC images for OCR validation.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Permission to save images to your photo library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Location access is required to show nearby lounges and your current position on the map.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Location access is required to show nearby lounges and your current position on the map.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is required for QR code scanning.</string>
+	<key>GOOGLE_MAPS_API_KEY</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
 </dict>
 </plist>

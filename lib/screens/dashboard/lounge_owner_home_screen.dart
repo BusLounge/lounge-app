@@ -191,16 +191,6 @@ class _LoungeOwnerHomeScreenState extends State<LoungeOwnerHomeScreen> {
 
                           const SizedBox(height: 18),
 
-                          // Pending Lounge Draft Card (if exists and account approved)
-                          if (registrationProvider.hasPendingLounge)
-                            _buildPendingLoungeCard(
-                              loungeOwner?.verificationStatus,
-                              registrationProvider,
-                            ),
-
-                          if (registrationProvider.hasPendingLounge)
-                            const SizedBox(height: 18),
-
                           // My Lounges Section
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -526,134 +516,6 @@ class _LoungeOwnerHomeScreenState extends State<LoungeOwnerHomeScreen> {
     );
   }
 
-  Widget _buildPendingLoungeCard(
-    String? verificationStatus,
-    RegistrationProvider registrationProvider,
-  ) {
-    final isApproved = verificationStatus == 'approved';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isApproved ? const Color(0xFFE3F2FD) : const Color(0xFFFFF3E0),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isApproved ? const Color(0xFF2196F3) : const Color(0xFFFFA726),
-          width: 1.5,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                isApproved ? Icons.check_circle : Icons.pending,
-                color: isApproved
-                    ? const Color(0xFF1976D2)
-                    : const Color(0xFFF57C00),
-                size: 28,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isApproved
-                          ? 'Complete Your Lounge Registration'
-                          : 'Lounge Draft Saved',
-                      style: TextStyle(
-                        color: isApproved
-                            ? const Color(0xFF1976D2)
-                            : const Color(0xFFF57C00),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isApproved
-                          ? 'Your account is now approved! Submit your lounge to start receiving bookings.'
-                          : 'Your lounge details are saved and will be submitted once your account is approved.',
-                      style: TextStyle(
-                        color: isApproved
-                            ? const Color(0xFF1976D2).withOpacity(0.8)
-                            : const Color(0xFFF57C00).withOpacity(0.8),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (isApproved) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: registrationProvider.isLoading
-                    ? null
-                    : () async {
-                        // Submit the pending lounge
-                        final success =
-                            await registrationProvider.submitPendingLounge();
-                        if (success && mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Lounge submitted successfully!',
-                              ),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                          // Reload data
-                          await _loadData();
-                        } else if (!success && mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                registrationProvider.errorMessage ??
-                                    'Failed to submit lounge',
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                icon: registrationProvider.isLoading
-                    ? const SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Icon(Icons.send),
-                label: Text(
-                  registrationProvider.isLoading
-                      ? 'Submitting...'
-                      : 'Submit Lounge Now',
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmptyState() {
     return Container(
       width: double.infinity,
@@ -683,12 +545,13 @@ class _LoungeOwnerHomeScreenState extends State<LoungeOwnerHomeScreen> {
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: () {
-              // Navigate to registration screen to add lounge
-              Navigator.pushNamed(context, '/lounge-owner-registration');
+            onPressed: () async {
+              await Navigator.pushNamed(context, '/add-lounge');
+              if (!mounted) return;
+              await _loadMyLounges();
             },
             icon: const Icon(Icons.add),
-            label: const Text('Add Lounge'),
+            label: const Text('Add First Lounge'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,

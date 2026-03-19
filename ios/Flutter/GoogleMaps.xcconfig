@@ -1,0 +1,4 @@
+// Google Maps API Key for iOS
+// This file is referenced by Debug.xcconfig and Release.xcconfig
+// Add this file to .gitignore to keep the key out of source control
+GOOGLE_MAPS_API_KEY=AIzaSyAuA_RMUaOuqKOasnd5GU8MdYvrDmToXPg

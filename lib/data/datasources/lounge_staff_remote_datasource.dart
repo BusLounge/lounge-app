@@ -57,6 +57,7 @@ abstract class LoungeStaffRemoteDataSource {
   /// PUT /api/v1/lounge-staff/profile/update
   Future<Map<String, dynamic>> updateProfile({
     String? fullName,
+    String? phone,
     String? nicNumber,
     String? email,
     String? notes,
@@ -409,6 +410,7 @@ class LoungeStaffRemoteDataSourceImpl implements LoungeStaffRemoteDataSource {
   @override
   Future<Map<String, dynamic>> updateProfile({
     String? fullName,
+    String? phone,
     String? nicNumber,
     String? email,
     String? notes,
@@ -416,12 +418,17 @@ class LoungeStaffRemoteDataSourceImpl implements LoungeStaffRemoteDataSource {
     try {
       print('📤 Sending lounge staff profile update request...');
       if (fullName != null) print('   Full Name: $fullName');
+      if (phone != null) print('   Phone: $phone');
       if (nicNumber != null) print('   NIC Number: $nicNumber');
       if (email != null) print('   Email: $email');
       if (notes != null) print('   Notes: $notes');
 
       final data = <String, dynamic>{};
       if (fullName != null) data['full_name'] = fullName;
+      if (phone != null) {
+        data['phone'] = phone;
+        data['phone_number'] = phone;
+      }
       if (nicNumber != null) data['nic_number'] = nicNumber;
       if (email != null) data['email'] = email;
       if (notes != null) data['notes'] = notes;

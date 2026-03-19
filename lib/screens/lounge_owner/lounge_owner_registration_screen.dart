@@ -35,7 +35,6 @@ class _LoungeOwnerRegistrationScreenState
     extends State<LoungeOwnerRegistrationScreen> {
   final List<String> _steps = [
     'Business & Manager',
-    'Lounge Details',
     'Review & Submit',
   ];
 
@@ -70,7 +69,6 @@ class _LoungeOwnerRegistrationScreenState
   final List<String> _selectedAmenities = [];
 
   // Route selection
-  List<MasterRoute> _masterRoutes = [];
   bool _loadingRoutes = false;
   // Each selected route stores: {routeId, stopBeforeId, stopAfterId, routeNumber, routeDisplay, stopBeforeName, stopAfterName}
   final List<Map<String, dynamic>> _selectedRoutes = [];
@@ -102,53 +100,10 @@ class _LoungeOwnerRegistrationScreenState
     // Don't load routes on init - load only when user searches
   }
 
-  Future<void> _loadMasterRoutes({String? searchQuery}) async {
-    setState(() => _loadingRoutes = true);
-    try {
-      final apiClient = InjectionContainer().apiClient;
-      final routeDataSource = RouteRemoteDataSource(apiClient: apiClient);
-      final routes = await routeDataSource.getMasterRoutes();
-      print('📍 Loaded ${routes.length} master routes');
-
-      // Filter by search query if provided
-      List<MasterRoute> filteredRoutes = routes;
-      if (searchQuery != null && searchQuery.isNotEmpty) {
-        filteredRoutes = routes.where((route) {
-          final query = searchQuery.toLowerCase();
-          return route.routeNumber.toLowerCase().contains(query) ||
-              route.routeName.toLowerCase().contains(query) ||
-              route.originCity.toLowerCase().contains(query) ||
-              route.destinationCity.toLowerCase().contains(query);
-        }).toList();
-      }
-
-      // Limit to 5 results
-      if (filteredRoutes.length > 5) {
-        filteredRoutes = filteredRoutes.sublist(0, 5);
-      }
-
-      print('📍 Showing ${filteredRoutes.length} filtered routes');
-      setState(() {
-        _masterRoutes = filteredRoutes;
-        _loadingRoutes = false;
-      });
-    } catch (e) {
-      print('❌ Failed to load routes: $e');
-      setState(() => _loadingRoutes = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load routes: $e')));
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final loungeOwnerProvider = Provider.of<LoungeOwnerProvider>(context);
     final registrationProvider = Provider.of<RegistrationProvider>(context);
-    final storageService = InjectionContainer().supabaseStorageService;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lounge Owner Registration'),
@@ -283,7 +238,6 @@ class _LoungeOwnerRegistrationScreenState
                                 context,
                                 loungeOwnerProvider,
                                 registrationProvider,
-                                storageService,
                               ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -326,12 +280,71 @@ class _LoungeOwnerRegistrationScreenState
       case 0:
         return _buildBusinessInfoStep();
       case 1:
-        return _buildLoungeDetailsStep();
+        return _buildOwnerReviewStep();
       case 2:
+        return _buildLoungeDetailsStep();
+      case 3:
         return _buildReviewStep();
       default:
         return const SizedBox();
     }
+  }
+
+  Widget _buildOwnerReviewStep() {
+    final registrationProvider = Provider.of<RegistrationProvider>(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Review & Submit',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Please verify your details before submitting.',
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 24),
+        _buildReviewSection(
+          title: 'Business & Manager Information',
+          icon: Icons.business,
+          items: [
+            'Business Name: ${registrationProvider.businessName ?? 'N/A'}',
+            'Business License: ${registrationProvider.businessLicense?.isNotEmpty == true ? registrationProvider.businessLicense : 'N/A'}',
+            'Manager Name: ${registrationProvider.managerFullName ?? 'N/A'}',
+            'Manager NIC: ${registrationProvider.managerNicNumber ?? 'N/A'}',
+            'Manager Email: ${registrationProvider.managerEmail?.isNotEmpty == true ? registrationProvider.managerEmail : 'N/A'}',
+            'District: ${_selectedDistrict ?? 'N/A'}',
+          ],
+        ),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.green[200]!),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: Colors.green[700]),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'If everything is correct, press Submit. If not, press Previous to edit details.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.green[900],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildBusinessInfoStep() {
@@ -437,6 +450,61 @@ class _LoungeOwnerRegistrationScreenState
                 if (!emailRegex.hasMatch(value.trim())) {
                   return 'Invalid email format';
                 }
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: _selectedDistrict,
+            decoration: InputDecoration(
+              labelText: 'District *',
+              hintText: 'Select your district',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.location_city),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'Ampara', child: Text('Ampara')),
+              DropdownMenuItem(
+                  value: 'Anuradhapura', child: Text('Anuradhapura')),
+              DropdownMenuItem(value: 'Badulla', child: Text('Badulla')),
+              DropdownMenuItem(value: 'Batticaloa', child: Text('Batticaloa')),
+              DropdownMenuItem(value: 'Colombo', child: Text('Colombo')),
+              DropdownMenuItem(value: 'Galle', child: Text('Galle')),
+              DropdownMenuItem(value: 'Gampaha', child: Text('Gampaha')),
+              DropdownMenuItem(value: 'Hambantota', child: Text('Hambantota')),
+              DropdownMenuItem(value: 'Jaffna', child: Text('Jaffna')),
+              DropdownMenuItem(value: 'Kalutara', child: Text('Kalutara')),
+              DropdownMenuItem(value: 'Kandy', child: Text('Kandy')),
+              DropdownMenuItem(value: 'Kegalle', child: Text('Kegalle')),
+              DropdownMenuItem(
+                  value: 'Kilinochchi', child: Text('Kilinochchi')),
+              DropdownMenuItem(value: 'Kurunegala', child: Text('Kurunegala')),
+              DropdownMenuItem(value: 'Mannar', child: Text('Mannar')),
+              DropdownMenuItem(value: 'Matale', child: Text('Matale')),
+              DropdownMenuItem(value: 'Matara', child: Text('Matara')),
+              DropdownMenuItem(value: 'Monaragala', child: Text('Monaragala')),
+              DropdownMenuItem(value: 'Mullaitivu', child: Text('Mullaitivu')),
+              DropdownMenuItem(
+                  value: 'Nuwara Eliya', child: Text('Nuwara Eliya')),
+              DropdownMenuItem(
+                  value: 'Polonnaruwa', child: Text('Polonnaruwa')),
+              DropdownMenuItem(value: 'Puttalam', child: Text('Puttalam')),
+              DropdownMenuItem(value: 'Ratnapura', child: Text('Ratnapura')),
+              DropdownMenuItem(
+                  value: 'Trincomalee', child: Text('Trincomalee')),
+              DropdownMenuItem(value: 'Vavuniya', child: Text('Vavuniya')),
+            ],
+            onChanged: (value) {
+              setState(() {
+                _selectedDistrict = value;
+              });
+            },
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please select a district';
               }
               return null;
             },
@@ -706,14 +774,16 @@ class _LoungeOwnerRegistrationScreenState
               ),
               subtitle: _selectedLatitude != null
                   ? Text(
-                      'Lat: ${_selectedLatitude!.toStringAsFixed(6)}, '
-                      'Lng: ${_selectedLongitude!.toStringAsFixed(6)}',
+                      _selectedAddress?.isNotEmpty == true
+                          ? _selectedAddress!
+                          : 'Lat: ${_selectedLatitude!.toStringAsFixed(6)}, '
+                              'Lng: ${_selectedLongitude!.toStringAsFixed(6)}',
                       style: TextStyle(fontSize: 12),
                     )
                   : const Text('Tap to open map and select lounge location'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () async {
-                final result = await Navigator.push(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => LocationPickerWidget(
@@ -1365,23 +1435,27 @@ class _LoungeOwnerRegistrationScreenState
     BuildContext context,
     LoungeOwnerProvider loungeOwnerProvider,
     RegistrationProvider registrationProvider,
-    dynamic storageService,
   ) async {
     switch (registrationProvider.currentStep) {
       case 0:
-        await _handleStep1Next(loungeOwnerProvider, registrationProvider);
+        await _handleStep1Next(registrationProvider);
         break;
       case 1:
-        await _handleStep2Next(registrationProvider, storageService);
+        await _submitOwnerRegistration(context, loungeOwnerProvider);
         break;
       case 2:
+        await _handleStep2Next(
+          registrationProvider,
+          InjectionContainer().supabaseStorageService,
+        );
+        break;
+      case 3:
         await _submitRegistration(context);
         break;
     }
   }
 
   Future<void> _handleStep1Next(
-    LoungeOwnerProvider loungeOwnerProvider,
     RegistrationProvider registrationProvider,
   ) async {
     if (!_businessInfoFormKey.currentState!.validate()) {
@@ -1398,8 +1472,78 @@ class _LoungeOwnerRegistrationScreenState
       managerEmail: _managerEmailController.text.trim(),
     );
 
-    print('✅ Screen - Step 1: Business info saved locally, moving to Step 2');
+    final district = _selectedDistrict;
+    if (district == null || district.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a district'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    print('✅ Screen - Step 1: Business info saved locally, moving to review');
     registrationProvider.nextStep();
+  }
+
+  Future<void> _submitOwnerRegistration(
+    BuildContext context,
+    LoungeOwnerProvider loungeOwnerProvider,
+  ) async {
+    final registrationProvider = Provider.of<RegistrationProvider>(
+      context,
+      listen: false,
+    );
+
+    final district = _selectedDistrict;
+    if (district == null || district.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a district'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    final success = await loungeOwnerProvider.saveBusinessInfo(
+      businessName: registrationProvider.businessName ?? '',
+      businessLicense: registrationProvider.businessLicense ?? '',
+      managerFullName: registrationProvider.managerFullName ?? '',
+      managerNicNumber: registrationProvider.managerNicNumber ?? '',
+      managerEmail: registrationProvider.managerEmail ?? '',
+      district: district,
+    );
+
+    if (success) {
+      if (mounted) {
+        registrationProvider.reset();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration completed successfully.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              loungeOwnerProvider.errorMessage ??
+                  'Failed to save business information',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // OLD STEP 2 (NIC Verification) REMOVED - Now handled in Step 1 if needed
@@ -1503,16 +1647,6 @@ class _LoungeOwnerRegistrationScreenState
     // Move to review step - actual submission happens on Submit button
     print('✅ Screen - Moving to Review step...');
     registrationProvider.nextStep();
-  }
-
-  String _formatDuration(Duration duration) {
-    if (duration.inHours > 0) {
-      return '${duration.inHours}h ${duration.inMinutes % 60}m';
-    } else if (duration.inMinutes > 0) {
-      return '${duration.inMinutes}m ${duration.inSeconds % 60}s';
-    } else {
-      return '${duration.inSeconds}s';
-    }
   }
 
   Future<void> _submitRegistration(BuildContext context) async {
