@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -260,6 +262,14 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
     }
   }
 
+  void _zoomIn() {
+    _mapController?.animateCamera(CameraUpdate.zoomIn());
+  }
+
+  void _zoomOut() {
+    _mapController?.animateCamera(CameraUpdate.zoomOut());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -288,6 +298,11 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
             ),
             onMapCreated: (controller) => _mapController = controller,
             onTap: _updateLocation,
+            zoomGesturesEnabled: true,
+            scrollGesturesEnabled: true,
+            rotateGesturesEnabled: true,
+            tiltGesturesEnabled: true,
+            compassEnabled: true,
             markers: _selectedLocation != null
                 ? {
                     Marker(
@@ -301,6 +316,11 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
             myLocationEnabled: _hasLocationPermission,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
+            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+              Factory<OneSequenceGestureRecognizer>(
+                () => EagerGestureRecognizer(),
+              ),
+            },
           ),
 
           // Search bar + suggestions
@@ -439,15 +459,35 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
             ),
           ),
 
-          // Current location button
+          // Map controls (zoom + current location)
           Positioned(
             bottom: 16,
             right: 16,
-            child: FloatingActionButton(
-              onPressed: _getCurrentLocation,
-              child: _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Icon(Icons.my_location),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'zoom_in_btn',
+                  mini: true,
+                  onPressed: _zoomIn,
+                  child: const Icon(Icons.add),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton(
+                  heroTag: 'zoom_out_btn',
+                  mini: true,
+                  onPressed: _zoomOut,
+                  child: const Icon(Icons.remove),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton(
+                  heroTag: 'my_location_btn',
+                  onPressed: _getCurrentLocation,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Icon(Icons.my_location),
+                ),
+              ],
             ),
           ),
 

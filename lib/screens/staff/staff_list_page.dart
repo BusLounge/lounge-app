@@ -36,8 +36,9 @@ class _StaffListPageState extends State<StaffListPage> {
     // Set the first lounge as selected
     final verifiedLounges = registrationProvider.verifiedLounges;
     if (verifiedLounges.isNotEmpty) {
+      final preferredLoungeId = registrationProvider.preferredVerifiedLoungeId;
       setState(() {
-        _selectedLoungeId = verifiedLounges.first.id;
+        _selectedLoungeId = preferredLoungeId ?? verifiedLounges.first.id;
       });
       _loadStaffList();
     }
@@ -139,28 +140,6 @@ class _StaffListPageState extends State<StaffListPage> {
 
           final staffList = staffProvider.staffList;
 
-          if (staffList.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.people_outline,
-                      size: 64, color: AppColors.textSecondary),
-                  const SizedBox(height: 16),
-                  Text(
-                    _selectedFilter == 'pending'
-                        ? 'No pending staff'
-                        : 'No staff members yet',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
           return RefreshIndicator(
             onRefresh: _loadStaffList,
             child: ListView(
@@ -213,46 +192,75 @@ class _StaffListPageState extends State<StaffListPage> {
                         setState(() {
                           _selectedLoungeId = value;
                         });
+                        context
+                            .read<RegistrationProvider>()
+                            .setActiveLoungeId(value);
                         _loadStaffList();
                       }
                     },
                   ),
                 ),
                 // Staff list content
-                if (_selectedFilter == 'pending') ...[
-                  const SectionTitle(title: 'Pending Approval'),
-                  ...staffProvider.pendingStaff.map((staff) => StaffCard(
-                        staff: staff,
-                        onApprove: () => _decideStaffApproval(staff.id),
-                        onDelete: () => _confirmDeleteStaff(staff.id),
-                      )),
-                ],
-                if (_selectedFilter == 'approved') ...[
-                  const SectionTitle(title: 'Approved Staff'),
-                  ...staffProvider.approvedStaff.map(
-                    (staff) => StaffCard(
-                      staff: staff,
-                      onDelete: () => _confirmDeleteStaff(staff.id),
+                if (staffList.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 48),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.people_outline,
+                          size: 64,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _selectedFilter == 'pending'
+                              ? 'No pending staff'
+                              : 'No staff members yet',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-                if (_selectedFilter == 'all') ...[
-                  if (staffProvider.pendingStaff.isNotEmpty) ...[
+                  )
+                else ...[
+                  if (_selectedFilter == 'pending') ...[
                     const SectionTitle(title: 'Pending Approval'),
                     ...staffProvider.pendingStaff.map((staff) => StaffCard(
                           staff: staff,
                           onApprove: () => _decideStaffApproval(staff.id),
                           onDelete: () => _confirmDeleteStaff(staff.id),
                         )),
-                    const SizedBox(height: 24),
                   ],
-                  const SectionTitle(title: 'Active Staff'),
-                  ...staffProvider.activeStaff.map(
-                    (staff) => StaffCard(
-                      staff: staff,
-                      onDelete: () => _confirmDeleteStaff(staff.id),
+                  if (_selectedFilter == 'approved') ...[
+                    const SectionTitle(title: 'Approved Staff'),
+                    ...staffProvider.approvedStaff.map(
+                      (staff) => StaffCard(
+                        staff: staff,
+                        onDelete: () => _confirmDeleteStaff(staff.id),
+                      ),
                     ),
-                  ),
+                  ],
+                  if (_selectedFilter == 'all') ...[
+                    if (staffProvider.pendingStaff.isNotEmpty) ...[
+                      const SectionTitle(title: 'Pending Approval'),
+                      ...staffProvider.pendingStaff.map((staff) => StaffCard(
+                            staff: staff,
+                            onApprove: () => _decideStaffApproval(staff.id),
+                            onDelete: () => _confirmDeleteStaff(staff.id),
+                          )),
+                      const SizedBox(height: 24),
+                    ],
+                    const SectionTitle(title: 'Active Staff'),
+                    ...staffProvider.activeStaff.map(
+                      (staff) => StaffCard(
+                        staff: staff,
+                        onDelete: () => _confirmDeleteStaff(staff.id),
+                      ),
+                    ),
+                  ],
                 ],
               ],
             ),

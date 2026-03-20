@@ -54,6 +54,7 @@ class RegistrationProvider with ChangeNotifier {
 
   // My Lounges
   List<Lounge> _myLounges = [];
+  String? _activeLoungeId;
 
   // Getters
   int get currentStep => _currentStep;
@@ -92,9 +93,46 @@ class RegistrationProvider with ChangeNotifier {
   List<LoungeRoute> get routes => _routes;
 
   List<Lounge> get myLounges => _myLounges;
+  String? get activeLoungeId => _activeLoungeId;
 
   List<Lounge> get verifiedLounges =>
       _myLounges.where((lounge) => lounge.isVerified).toList();
+
+  String? get preferredVerifiedLoungeId {
+    final lounges = verifiedLounges;
+    if (lounges.isEmpty) {
+      return null;
+    }
+
+    final hasActiveLounge =
+        _activeLoungeId != null && lounges.any((l) => l.id == _activeLoungeId);
+
+    if (hasActiveLounge) {
+      return _activeLoungeId;
+    }
+
+    return lounges.first.id;
+  }
+
+  void setActiveLoungeId(String? loungeId) {
+    if (loungeId == _activeLoungeId) {
+      return;
+    }
+
+    if (loungeId == null) {
+      _activeLoungeId = null;
+      notifyListeners();
+      return;
+    }
+
+    final exists = _myLounges.any((lounge) => lounge.id == loungeId);
+    if (!exists) {
+      return;
+    }
+
+    _activeLoungeId = loungeId;
+    notifyListeners();
+  }
 
   // Pending lounge submission (stored locally until account is approved)
   bool _hasPendingLounge = false;
@@ -392,6 +430,13 @@ class RegistrationProvider with ChangeNotifier {
         }
         _isLoading = false;
         _myLounges = lounges;
+        final verified = verifiedLounges;
+        if (verified.isEmpty) {
+          _activeLoungeId = null;
+        } else if (_activeLoungeId == null ||
+            !verified.any((lounge) => lounge.id == _activeLoungeId)) {
+          _activeLoungeId = verified.first.id;
+        }
         notifyListeners();
       },
     );

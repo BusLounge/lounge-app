@@ -33,8 +33,9 @@ class _DriverListPageState extends State<DriverListPage> {
 
     final verifiedLounges = registrationProvider.verifiedLounges;
     if (verifiedLounges.isNotEmpty) {
+      final preferredLoungeId = registrationProvider.preferredVerifiedLoungeId;
       setState(() {
-        _selectedLoungeId = verifiedLounges.first.id;
+        _selectedLoungeId = preferredLoungeId ?? verifiedLounges.first.id;
       });
       _loadDriverList();
     }
@@ -158,26 +159,6 @@ class _DriverListPageState extends State<DriverListPage> {
 
           final driverList = driverProvider.driverList;
 
-          if (driverList.isEmpty && _selectedLoungeId != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.local_taxi_outlined,
-                      size: 64, color: AppColors.textSecondary),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No drivers yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
           return RefreshIndicator(
             onRefresh: _loadDriverList,
             child: ListView(
@@ -230,18 +211,43 @@ class _DriverListPageState extends State<DriverListPage> {
                         setState(() {
                           _selectedLoungeId = value;
                         });
+                        context
+                            .read<RegistrationProvider>()
+                            .setActiveLoungeId(value);
                         _loadDriverList();
                       }
                     },
                   ),
                 ),
                 // Driver list
-                ...driverList.map(
-                  (driver) => DriverCard(
-                    driver: driver,
-                    onDelete: () => _confirmDeleteDriver(driver.id),
+                if (driverList.isEmpty && _selectedLoungeId != null)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 48),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.local_taxi_outlined,
+                          size: 64,
+                          color: AppColors.textSecondary,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No drivers yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ...driverList.map(
+                    (driver) => DriverCard(
+                      driver: driver,
+                      onDelete: () => _confirmDeleteDriver(driver.id),
+                    ),
                   ),
-                ),
               ],
             ),
           );
