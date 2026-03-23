@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../config/theme_config.dart';
 import '../../config/constants.dart';
 import '../../presentation/providers/auth_provider.dart';
-import 'phone_input_screen.dart';
 import 'staff_otp_registration_screen.dart';
 import 'staff_registered_login_screen.dart';
 
@@ -95,7 +94,7 @@ class InitialRoleSelectionScreen extends StatelessWidget {
               // Lounge Staff Button
               _RoleCard(
                 icon: Icons.person,
-                title: 'Lounge Staff',
+                title: 'Lounge Staff Sign Up',
                 description: 'Work at your favorite lounge',
                 onTap: () {
                   final authProvider =
@@ -115,7 +114,7 @@ class InitialRoleSelectionScreen extends StatelessWidget {
               // Registered Lounge Staff Button
               _RoleCard(
                 icon: Icons.verified_user,
-                title: 'Registered Lounge Staff',
+                title: 'Lounge Staff Sign In',
                 description: 'Login to view your staff profile',
                 onTap: () {
                   final authProvider =

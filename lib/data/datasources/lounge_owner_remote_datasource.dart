@@ -7,7 +7,24 @@ import '../../core/error/exceptions.dart';
 class LoungeOwnerRemoteDataSource {
   final ApiClient apiClient;
 
+  static const Duration _cacheTtl = Duration(minutes: 5);
+
+  static Map<String, List<Map<String, dynamic>>>? _cachedOwnersByDistrict;
+  static DateTime? _cachedOwnersByDistrictAt;
+  static Future<Map<String, List<Map<String, dynamic>>>>?
+      _ownersByDistrictInFlight;
+
+  static final Map<String, List<Map<String, dynamic>>> _ownerLoungesCache = {};
+  static final Map<String, DateTime> _ownerLoungesCacheAt = {};
+  static final Map<String, Future<List<Map<String, dynamic>>>>
+      _ownerLoungesInFlight = {};
+
   LoungeOwnerRemoteDataSource({required this.apiClient});
+
+  bool _isFresh(DateTime? cachedAt) {
+    if (cachedAt == null) return false;
+    return DateTime.now().difference(cachedAt) < _cacheTtl;
+  }
 
   /// Save business and manager information (Step 1)
   /// POST /api/v1/lounge-owner/register/business-info
@@ -200,9 +217,35 @@ class LoungeOwnerRemoteDataSource {
   /// Response: {"district_name": [{"id": "...", "owner_name": "...", ...}]}
   Future<Map<String, List<Map<String, dynamic>>>>
       getApprovedLoungeOwnersGroupedByDistrict() async {
+    if (_cachedOwnersByDistrict != null &&
+        _isFresh(_cachedOwnersByDistrictAt)) {
+      print('⚡ Using cached lounge owners by district');
+      return _cachedOwnersByDistrict!;
+    }
+
+    if (_ownersByDistrictInFlight != null) {
+      print('⏳ Awaiting in-flight district owners request');
+      return _ownersByDistrictInFlight!;
+    }
+
+    final future = _fetchApprovedLoungeOwnersGroupedByDistrict();
+    _ownersByDistrictInFlight = future;
+
+    try {
+      final data = await future;
+      _cachedOwnersByDistrict = data;
+      _cachedOwnersByDistrictAt = DateTime.now();
+      return data;
+    } finally {
+      _ownersByDistrictInFlight = null;
+    }
+  }
+
+  Future<Map<String, List<Map<String, dynamic>>>>
+      _fetchApprovedLoungeOwnersGroupedByDistrict() async {
     try {
       print('📍 Fetching approved lounge owners grouped by district...');
-      final response = await apiClient.get(
+      final response = await apiClient.getPublic(
         '/api/v1/lounge-owner/approved/grouped-by-district',
       );
 
@@ -243,8 +286,23 @@ class LoungeOwnerRemoteDataSource {
       print('❌ DioException: ${e.type}');
       print('❌ Response Status: ${e.response?.statusCode}');
       print('❌ Response Data: ${e.response?.data}');
-      final errorMessage =
-          e.response?.data?['message'] ?? e.message ?? 'Unknown error';
+      final bool isNetworkIssue = e.response == null;
+      final dynamic responseData = e.response?.data;
+      String errorMessage;
+
+      if (isNetworkIssue) {
+        errorMessage =
+            'Network timeout. Please check backend server and internet connection.';
+      } else if (responseData is Map<String, dynamic>) {
+        errorMessage = (responseData['message'] ??
+                responseData['error'] ??
+                e.message ??
+                'Unknown error')
+            .toString();
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
       throw ServerException('Get lounge owners failed: $errorMessage');
     } catch (e) {
       print('❌ Error: $e');
@@ -255,9 +313,37 @@ class LoungeOwnerRemoteDataSource {
   /// Get lounges owned by a specific lounge owner
   /// GET /api/v1/lounge-owner/:owner_id/lounges
   Future<List<Map<String, dynamic>>> getLoungesByOwnerId(String ownerId) async {
+    final cachedLounges = _ownerLoungesCache[ownerId];
+    final cachedAt = _ownerLoungesCacheAt[ownerId];
+    if (cachedLounges != null && _isFresh(cachedAt)) {
+      print('⚡ Using cached lounges for owner: $ownerId');
+      return cachedLounges;
+    }
+
+    final inFlight = _ownerLoungesInFlight[ownerId];
+    if (inFlight != null) {
+      print('⏳ Awaiting in-flight lounges request for owner: $ownerId');
+      return inFlight;
+    }
+
+    final future = _fetchLoungesByOwnerId(ownerId);
+    _ownerLoungesInFlight[ownerId] = future;
+
+    try {
+      final lounges = await future;
+      _ownerLoungesCache[ownerId] = lounges;
+      _ownerLoungesCacheAt[ownerId] = DateTime.now();
+      return lounges;
+    } finally {
+      _ownerLoungesInFlight.remove(ownerId);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchLoungesByOwnerId(
+      String ownerId) async {
     try {
       print('📍 Fetching lounges for owner: $ownerId');
-      final response = await apiClient.get(
+      final response = await apiClient.getPublic(
         '/api/v1/lounge-owner/$ownerId/lounges',
       );
 
@@ -290,8 +376,23 @@ class LoungeOwnerRemoteDataSource {
       print('❌ DioException: ${e.type}');
       print('❌ Response Status: ${e.response?.statusCode}');
       print('❌ Response Data: ${e.response?.data}');
-      final errorMessage =
-          e.response?.data?['message'] ?? e.message ?? 'Unknown error';
+      final bool isNetworkIssue = e.response == null;
+      final dynamic responseData = e.response?.data;
+      String errorMessage;
+
+      if (isNetworkIssue) {
+        errorMessage =
+            'Network timeout. Please check backend server and internet connection.';
+      } else if (responseData is Map<String, dynamic>) {
+        errorMessage = (responseData['message'] ??
+                responseData['error'] ??
+                e.message ??
+                'Unknown error')
+            .toString();
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
       throw ServerException('Get lounges failed: $errorMessage');
     } catch (e) {
       print('❌ Error: $e');

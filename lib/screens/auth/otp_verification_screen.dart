@@ -7,6 +7,7 @@ import 'package:sms_autofill/sms_autofill.dart';
 import '../../config/constants.dart';
 import '../../config/theme_config.dart';
 import '../../presentation/providers/auth_provider.dart';
+import '../../presentation/providers/lounge_owner_provider.dart';
 import '../../presentation/providers/registration_provider.dart';
 import '../../utils/phone_formatter.dart';
 import '../../widgets/custom_button.dart';
@@ -145,8 +146,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     if (!mounted) return;
 
     if (result['success'] == true) {
-      final nextRoute = result['nextRoute'] as String?;
-
       // Otherwise handle regular lounge owner flow
       final userId = result['userId'] as String?;
       final roles = result['roles'] as List<String>? ?? [];
@@ -190,6 +189,37 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         '   registrationStep: $registrationStep\n'
         '   isProfileActuallyComplete: $isProfileActuallyComplete',
       );
+
+      // PRIORITY ROUTE: Approved lounge owners should always go to dashboard
+      if (hasLoungeOwnerRole) {
+        final loungeOwnerProvider = Provider.of<LoungeOwnerProvider>(
+          context,
+          listen: false,
+        );
+
+        final profileFetched =
+            await loungeOwnerProvider.getLoungeOwnerProfile();
+        final verificationStatus =
+            loungeOwnerProvider.loungeOwner?.verificationStatus.toLowerCase();
+
+        _logger.i(
+          '🔍 Lounge Owner Verification Check:\n'
+          '   profileFetched: $profileFetched\n'
+          '   verificationStatus: $verificationStatus',
+        );
+
+        if (profileFetched && verificationStatus == 'approved') {
+          _logger.i(
+              '✅ APPROVED LOUNGE OWNER detected → DASHBOARD (forced priority)');
+          if (!mounted) return;
+
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            AppConstants.homeRoute,
+            (route) => false,
+          );
+          return;
+        }
+      }
 
       // ROUTE 1: Existing user (lounge owner or staff) with COMPLETED profile → DASHBOARD
       if (isExistingUser && isProfileActuallyComplete) {

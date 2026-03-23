@@ -108,10 +108,19 @@ class _SplashScreenState extends State<SplashScreen> {
 
       final profileCompleted = loungeOwner.profileCompleted;
       final registrationStep = loungeOwner.registrationStep;
+      final verificationStatus = loungeOwner.verificationStatus.toLowerCase();
 
       _logger.i(
-        'SPLASH: profileCompleted = $profileCompleted, registration_step = $registrationStep',
+        'SPLASH: profileCompleted = $profileCompleted, registration_step = $registrationStep, verificationStatus = $verificationStatus',
       );
+
+      // Priority rule: approved lounge owners always go to dashboard
+      if (verificationStatus == 'approved') {
+        _logger.i('SPLASH: Approved lounge owner - Going to HOME (priority)');
+        _hasNavigated = true;
+        Navigator.of(context).pushReplacementNamed(AppConstants.homeRoute);
+        return;
+      }
 
       //  PRIMARY CHECK: profile_completed (simple and reliable)
       if (profileCompleted) {

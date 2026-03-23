@@ -379,22 +379,6 @@ class _LoungesListScreenState extends State<LoungesListScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildQuickActionButton(
-                    icon: Icons.book_online,
-                    label: 'Bookings',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Bookings for ${lounge.loungeName} coming soon!',
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildQuickActionButton(
                     icon: Icons.settings,
                     label: 'Settings',
                     onTap: () => _showLoungeOptions(lounge),
@@ -486,40 +470,6 @@ class _LoungesListScreenState extends State<LoungesListScreen> {
                       'loungeId': lounge.id,
                       'loungeName': lounge.loungeName,
                     },
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.book_online,
-                  color: AppColors.secondary,
-                ),
-                title: const Text('View Bookings'),
-                subtitle: const Text('Manage lounge bookings'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Bookings for ${lounge.loungeName} coming soon!',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.photo_library,
-                  color: AppColors.accent,
-                ),
-                title: const Text('Photos'),
-                subtitle: const Text('Manage lounge photos'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Photo management coming soon!'),
-                    ),
                   );
                 },
               ),
