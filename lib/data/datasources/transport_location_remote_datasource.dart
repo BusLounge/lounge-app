@@ -15,6 +15,7 @@ abstract class TransportLocationRemoteDataSource {
     required double latitude,
     required double longitude,
     required int estDuration,
+    required double distance,
   });
 
   /// PUT /api/v1/lounges/:id/transport-locations/:location_id
@@ -25,6 +26,7 @@ abstract class TransportLocationRemoteDataSource {
     double? latitude,
     double? longitude,
     int? estDuration,
+    double? distance,
     bool? isActive,
   });
 
@@ -138,12 +140,14 @@ class TransportLocationRemoteDataSourceImpl
     required double latitude,
     required double longitude,
     required int estDuration,
+    required double distance,
   }) async {
     try {
       print('📤 [API] Adding transport location: $locationName');
       print('📤 [API] Lounge ID: $loungeId');
       print('📤 [API] Coordinates: ($latitude, $longitude)');
       print('📤 [API] Estimated duration: $estDuration min');
+      print('📤 [API] Distance: $distance km');
 
       final response = await _dio.post(
         '/api/v1/lounges/transport-locations',
@@ -153,6 +157,7 @@ class TransportLocationRemoteDataSourceImpl
           'latitude': latitude,
           'longitude': longitude,
           'est_duration': estDuration,
+          'distance': distance,
         },
       );
 
@@ -197,6 +202,7 @@ class TransportLocationRemoteDataSourceImpl
     double? latitude,
     double? longitude,
     int? estDuration,
+    double? distance,
     bool? isActive,
   }) async {
     try {
@@ -214,6 +220,9 @@ class TransportLocationRemoteDataSourceImpl
       }
       if (estDuration != null) {
         requestData['est_duration'] = estDuration;
+      }
+      if (distance != null) {
+        requestData['distance'] = distance;
       }
       if (isActive != null) {
         requestData['status'] = isActive ? 'active' : 'inactive';

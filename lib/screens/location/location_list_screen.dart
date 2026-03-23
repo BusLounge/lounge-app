@@ -360,6 +360,22 @@ class _LocationListScreenState extends State<LocationListScreen> {
                               ),
                             ),
 
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                _buildMetaChip(
+                                  icon: Icons.schedule,
+                                  label: '${location.estDuration ?? 0} min',
+                                ),
+                                const SizedBox(width: 8),
+                                _buildMetaChip(
+                                  icon: Icons.route,
+                                  label:
+                                      '${(location.distance ?? 0).toStringAsFixed(1)} km',
+                                ),
+                              ],
+                            ),
+
                             if (prices.isNotEmpty) ...[
                               const SizedBox(height: 16),
                               const Divider(height: 1),
@@ -520,5 +536,30 @@ class _LocationListScreenState extends State<LocationListScreen> {
       default:
         return Icons.local_taxi;
     }
+  }
+
+  Widget _buildMetaChip({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

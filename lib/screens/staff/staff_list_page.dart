@@ -85,22 +85,6 @@ class _StaffListPageState extends State<StaffListPage> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list, color: AppColors.textPrimary),
-            onSelected: (value) {
-              setState(() {
-                _selectedFilter = value;
-              });
-              _loadStaffList();
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('All Staff')),
-              const PopupMenuItem(value: 'approved', child: Text('Approved')),
-              const PopupMenuItem(value: 'pending', child: Text('Pending')),
-            ],
-          ),
-        ],
       ),
       body: Consumer2<LoungeStaffProvider, RegistrationProvider>(
         builder: (context, staffProvider, registrationProvider, _) {

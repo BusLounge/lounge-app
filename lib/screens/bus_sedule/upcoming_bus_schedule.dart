@@ -63,18 +63,6 @@ class _BusScheduleScreenState extends State<BusScheduleScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.add_circle_outline,
-              color: AppColors.primary,
-            ),
-            onPressed: () {
-              _showAddScheduleDialog();
-            },
-            tooltip: 'Add Schedule',
-          ),
-        ],
       ),
       bottomNavigationBar: const StaffBottomNavBar(currentIndex: 3),
       body: SafeArea(
@@ -689,52 +677,6 @@ class _BusScheduleScreenState extends State<BusScheduleScreen> {
     final month = dateTime.month.toString().padLeft(2, '0');
     final day = dateTime.day.toString().padLeft(2, '0');
     return '$year-$month-$day';
-  }
-
-  void _showAddScheduleDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Add Bus Schedule',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        content: const Text(
-          'Schedule creation form will be implemented here.',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Close', style: TextStyle(color: Colors.grey.shade600)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Feature coming soon!'),
-                  backgroundColor: AppColors.primary,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
   }
 }
 

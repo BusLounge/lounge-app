@@ -62,6 +62,88 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
     _loadingDialogContext = null;
   }
 
+  Future<void> _showSuccessDialog({
+    required String title,
+    required String message,
+  }) async {
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: Colors.white,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: AppColors.primary,
+                  size: 50,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                      height: 1.5,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _initialize() async {
     final registrationProvider = context.read<RegistrationProvider>();
 
@@ -106,6 +188,10 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
     final TextEditingController latCtrl = TextEditingController();
     final TextEditingController lonCtrl = TextEditingController();
     final TextEditingController estDurationCtrl = TextEditingController();
+    final TextEditingController distanceCtrl = TextEditingController();
+    final TextEditingController threeWheelerPriceCtrl = TextEditingController();
+    final TextEditingController carPriceCtrl = TextEditingController();
+    final TextEditingController vanPriceCtrl = TextEditingController();
     bool isLoadingLocation = false;
     String? selectedLoungeId = _selectedLoungeId;
 
@@ -187,6 +273,100 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
                       borderSide:
                           const BorderSide(color: AppColors.primary, width: 2),
                     ),
+                  ),
+                ),
+
+                TextField(
+                  controller: distanceCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Distance from Lounge (km) *',
+                    hintText: 'e.g., 3.5',
+                    prefixIcon:
+                        const Icon(Icons.route, color: AppColors.primary),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: AppColors.primary, width: 2),
+                    ),
+                  ),
+                ),
+
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 12,
+                    children: [
+                      const Text(
+                        'Initial Prices (LKR) *',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      TextField(
+                        controller: threeWheelerPriceCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Three Wheeler Price *',
+                          hintText: 'Minimum 50',
+                          prefixIcon: const Icon(
+                            Icons.electric_rickshaw,
+                            color: AppColors.primary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      TextField(
+                        controller: carPriceCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Car Price *',
+                          hintText: 'Minimum 50',
+                          prefixIcon: const Icon(
+                            Icons.directions_car,
+                            color: AppColors.primary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      TextField(
+                        controller: vanPriceCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Van Price *',
+                          hintText: 'Minimum 50',
+                          prefixIcon: const Icon(
+                            Icons.airport_shuttle,
+                            color: AppColors.primary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -402,6 +582,29 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
                   return;
                 }
 
+                double? distance;
+                try {
+                  distance = double.parse(distanceCtrl.text);
+                  if (distance < 0) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(
+                        content:
+                            Text('Distance must be zero or a positive number'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                    return;
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid distance in km'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                  return;
+                }
+
                 double? latitude, longitude;
                 try {
                   latitude = double.parse(latCtrl.text);
@@ -437,20 +640,67 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
                   return;
                 }
 
+                double? threeWheelerPrice;
+                double? carPrice;
+                double? vanPrice;
+                try {
+                  threeWheelerPrice = double.parse(threeWheelerPriceCtrl.text);
+                  carPrice = double.parse(carPriceCtrl.text);
+                  vanPrice = double.parse(vanPriceCtrl.text);
+
+                  if (threeWheelerPrice < 50 ||
+                      carPrice < 50 ||
+                      vanPrice < 50) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Each price must be at least 50 LKR for first setup'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                    return;
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('Please enter valid prices for all vehicles'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                  return;
+                }
+
                 Navigator.pop(ctx); // Close the add location dialog
 
                 final provider = context.read<TransportLocationProvider>();
                 bool success = false;
+                bool pricesSaved = false;
 
                 try {
                   _showLoadingDialog();
-                  success = await provider.addTransportLocation(
+                  final createdLocation = await provider.addTransportLocation(
                     loungeId: selectedLoungeId!,
                     locationName: locCtrl.text.trim(),
                     latitude: latitude,
                     longitude: longitude,
                     estDuration: estDuration,
+                    distance: distance,
                   );
+
+                  success = createdLocation != null;
+
+                  if (createdLocation != null) {
+                    pricesSaved = await provider.setLocationPrices(
+                      loungeId: selectedLoungeId!,
+                      locationId: createdLocation.id,
+                      prices: {
+                        'Three Wheeler': threeWheelerPrice,
+                        'Car': carPrice,
+                        'Van': vanPrice,
+                      },
+                    );
+                  }
 
                   if (success) {
                     // Reload locations
@@ -462,11 +712,20 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
 
                 if (!mounted) return;
 
-                if (success) {
+                if (success && pricesSaved) {
+                  await _showSuccessDialog(
+                    title: 'Location Added Successfully!',
+                    message:
+                        'The location and its prices have been added for this lounge.',
+                  );
+                } else if (success && !pricesSaved) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Location added successfully!'),
-                      backgroundColor: AppColors.success,
+                    SnackBar(
+                      content: Text(
+                        provider.error ??
+                            'Location added, but failed to save prices. Please update prices.',
+                      ),
+                      backgroundColor: AppColors.error,
                     ),
                   );
                 } else {
@@ -762,6 +1021,22 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
                                   ),
 
                                   const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      _buildInfoChip(
+                                        icon: Icons.schedule,
+                                        label:
+                                            '${location.estDuration ?? 0} min',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildInfoChip(
+                                        icon: Icons.route,
+                                        label:
+                                            '${(location.distance ?? 0).toStringAsFixed(1)} km',
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
                                   const Divider(height: 1),
                                   const SizedBox(height: 16),
 
@@ -924,6 +1199,31 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
     }
   }
 
+  Widget _buildInfoChip({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _savePricesForLocation(TransportLocationModel location) async {
     if (_selectedLoungeId == null) return;
 
@@ -971,11 +1271,9 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
     Navigator.of(context, rootNavigator: true).pop(); // Close loading
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Prices saved successfully!'),
-          backgroundColor: AppColors.success,
-        ),
+      await _showSuccessDialog(
+        title: 'Prices Saved Successfully!',
+        message: 'Location prices have been updated successfully.',
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

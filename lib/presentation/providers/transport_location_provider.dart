@@ -41,12 +41,13 @@ class TransportLocationProvider extends ChangeNotifier {
   }
 
   /// Add a new transport location
-  Future<bool> addTransportLocation({
+  Future<TransportLocationModel?> addTransportLocation({
     required String loungeId,
     required String locationName,
     required double latitude,
     required double longitude,
     required int estDuration,
+    required double distance,
   }) async {
     _isLoading = true;
     _error = null;
@@ -59,22 +60,23 @@ class TransportLocationProvider extends ChangeNotifier {
         latitude: latitude,
         longitude: longitude,
         estDuration: estDuration,
+        distance: distance,
       );
 
       _locations.add(newLocation);
       _isLoading = false;
       notifyListeners();
-      return true;
+      return newLocation;
     } on AppException catch (e) {
       _error = e.message;
       _isLoading = false;
       notifyListeners();
-      return false;
+      return null;
     } catch (e) {
       _error = 'An unexpected error occurred';
       _isLoading = false;
       notifyListeners();
-      return false;
+      return null;
     }
   }
 
@@ -86,6 +88,7 @@ class TransportLocationProvider extends ChangeNotifier {
     double? latitude,
     double? longitude,
     int? estDuration,
+    double? distance,
     bool? isActive,
   }) async {
     _isLoading = true;
@@ -100,6 +103,7 @@ class TransportLocationProvider extends ChangeNotifier {
         latitude: latitude,
         longitude: longitude,
         estDuration: estDuration,
+        distance: distance,
         isActive: isActive,
       );
 
@@ -205,6 +209,7 @@ class TransportLocationProvider extends ChangeNotifier {
           latitude: _locations[index].latitude,
           longitude: _locations[index].longitude,
           estDuration: _locations[index].estDuration,
+          distance: _locations[index].distance,
           isActive: _locations[index].isActive,
           createdAt: _locations[index].createdAt,
           updatedAt: DateTime.now(),
@@ -254,6 +259,7 @@ class TransportLocationProvider extends ChangeNotifier {
           latitude: location.latitude,
           longitude: location.longitude,
           estDuration: location.estDuration,
+          distance: location.distance,
           isActive: location.isActive,
           createdAt: location.createdAt,
           updatedAt: location.updatedAt,

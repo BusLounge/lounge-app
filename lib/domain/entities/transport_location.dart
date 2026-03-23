@@ -5,6 +5,7 @@ class TransportLocation {
   final double latitude;
   final double longitude;
   final int? estDuration;
+  final double? distance;
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -17,6 +18,7 @@ class TransportLocation {
     required this.latitude,
     required this.longitude,
     this.estDuration,
+    this.distance,
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
