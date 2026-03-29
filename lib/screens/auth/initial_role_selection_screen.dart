@@ -95,7 +95,7 @@ class InitialRoleSelectionScreen extends StatelessWidget {
               _RoleCard(
                 icon: Icons.person,
                 title: 'Lounge Staff Sign Up',
-                description: 'Work at your favorite lounge',
+                description: 'first time registering',
                 onTap: () {
                   final authProvider =
                       Provider.of<AuthProvider>(context, listen: false);

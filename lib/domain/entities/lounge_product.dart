@@ -97,6 +97,7 @@ class LoungeProduct extends Equatable {
   final String? description;
   final ProductType productType;
   final String price; // Stored as string for precision
+  final String priceRateType;
   final String? discountedPrice;
   final String? imageUrl;
   final String? thumbnailUrl;
@@ -131,6 +132,7 @@ class LoungeProduct extends Equatable {
     this.description,
     this.productType = ProductType.product,
     required this.price,
+    this.priceRateType = 'fixed_rate',
     this.discountedPrice,
     this.imageUrl,
     this.thumbnailUrl,
@@ -167,6 +169,7 @@ class LoungeProduct extends Equatable {
         description,
         productType,
         price,
+        priceRateType,
         discountedPrice,
         imageUrl,
         thumbnailUrl,
@@ -225,7 +228,8 @@ class LoungeProduct extends Equatable {
     if (availableFrom == null && availableUntil == null) return true;
 
     final now = DateTime.now();
-    final currentTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final currentTime =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
     if (availableFrom != null && currentTime.compareTo(availableFrom!) < 0) {
       return false;
@@ -254,6 +258,7 @@ class LoungeProduct extends Equatable {
     String? description,
     ProductType? productType,
     String? price,
+    String? priceRateType,
     String? discountedPrice,
     String? imageUrl,
     String? thumbnailUrl,
@@ -288,6 +293,7 @@ class LoungeProduct extends Equatable {
       description: description ?? this.description,
       productType: productType ?? this.productType,
       price: price ?? this.price,
+      priceRateType: priceRateType ?? this.priceRateType,
       discountedPrice: discountedPrice ?? this.discountedPrice,
       imageUrl: imageUrl ?? this.imageUrl,
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
@@ -298,7 +304,8 @@ class LoungeProduct extends Equatable {
       availableFrom: availableFrom ?? this.availableFrom,
       availableUntil: availableUntil ?? this.availableUntil,
       availableDays: availableDays ?? this.availableDays,
-      serviceDurationMinutes: serviceDurationMinutes ?? this.serviceDurationMinutes,
+      serviceDurationMinutes:
+          serviceDurationMinutes ?? this.serviceDurationMinutes,
       isVegetarian: isVegetarian ?? this.isVegetarian,
       isVegan: isVegan ?? this.isVegan,
       isHalal: isHalal ?? this.isHalal,

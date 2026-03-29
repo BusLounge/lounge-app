@@ -11,6 +11,7 @@ class LoungeProductModel extends LoungeProduct {
     super.description,
     super.productType,
     required super.price,
+    super.priceRateType,
     super.discountedPrice,
     super.imageUrl,
     super.thumbnailUrl,
@@ -48,6 +49,9 @@ class LoungeProductModel extends LoungeProduct {
       description: json['description']?.toString(),
       productType: ProductType.fromString(json['product_type']?.toString()),
       price: json['price']?.toString() ?? '0',
+      priceRateType: _normalizePriceRateType(
+        json['price_rate_type']?.toString(),
+      ),
       discountedPrice: json['discounted_price']?.toString(),
       imageUrl: json['image_url']?.toString(),
       thumbnailUrl: json['thumbnail_url']?.toString(),
@@ -87,6 +91,21 @@ class LoungeProductModel extends LoungeProduct {
     );
   }
 
+  static String _normalizePriceRateType(String? value) {
+    switch ((value ?? '').toLowerCase()) {
+      case 'hourly_rate':
+      case 'hourly':
+        return 'hourly_rate';
+      case 'daily_rate':
+      case 'daily':
+        return 'daily_rate';
+      case 'fixed_rate':
+      case 'fixed':
+      default:
+        return 'fixed_rate';
+    }
+  }
+
   /// Convert model to JSON for API requests
   Map<String, dynamic> toJson() {
     return {
@@ -97,6 +116,7 @@ class LoungeProductModel extends LoungeProduct {
       if (description != null) 'description': description,
       'product_type': productType.value,
       'price': price,
+      'price_rate_type': priceRateType,
       if (discountedPrice != null) 'discounted_price': discountedPrice,
       if (imageUrl != null) 'image_url': imageUrl,
       if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
@@ -128,6 +148,7 @@ class LoungeProductModel extends LoungeProduct {
       if (description != null) 'description': description,
       'product_type': productType.value,
       'price': price,
+      'price_rate_type': priceRateType,
       if (discountedPrice != null) 'discounted_price': discountedPrice,
       if (imageUrl != null) 'image_url': imageUrl,
       if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
@@ -162,6 +183,7 @@ class LoungeProductModel extends LoungeProduct {
       description: entity.description,
       productType: entity.productType,
       price: entity.price,
+      priceRateType: entity.priceRateType,
       discountedPrice: entity.discountedPrice,
       imageUrl: entity.imageUrl,
       thumbnailUrl: entity.thumbnailUrl,
@@ -200,6 +222,7 @@ class LoungeProductModel extends LoungeProduct {
       description: description,
       productType: productType,
       price: price,
+      priceRateType: priceRateType,
       discountedPrice: discountedPrice,
       imageUrl: imageUrl,
       thumbnailUrl: thumbnailUrl,

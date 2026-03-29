@@ -16,6 +16,14 @@ enum MarketplaceState {
 class MarketplaceProvider extends ChangeNotifier {
   final MarketplaceRepository _repository;
 
+  static const Set<String> _excludedCategoryTerms = {
+    'charging',
+    'wifi',
+    'wi-fi',
+    'shower',
+    'rest area',
+  };
+
   MarketplaceProvider({required MarketplaceRepository repository})
       : _repository = repository;
 
@@ -79,7 +87,7 @@ class MarketplaceProvider extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      _categories = await _repository.getCategories();
+      _categories = _filterCategories(await _repository.getCategories());
       _state = MarketplaceState.loaded;
       AppLogger.info('Loaded ${_categories.length} categories');
       notifyListeners();
@@ -137,7 +145,16 @@ class MarketplaceProvider extends ChangeNotifier {
   }
 
   Future<void> _loadCategoriesInternal() async {
-    _categories = await _repository.getCategories();
+    _categories = _filterCategories(await _repository.getCategories());
+  }
+
+  List<MarketplaceCategory> _filterCategories(
+    List<MarketplaceCategory> categories,
+  ) {
+    return categories.where((category) {
+      final normalizedName = category.name.trim().toLowerCase();
+      return !_excludedCategoryTerms.any(normalizedName.contains);
+    }).toList();
   }
 
   Future<void> _loadProductsInternal(String loungeId) async {

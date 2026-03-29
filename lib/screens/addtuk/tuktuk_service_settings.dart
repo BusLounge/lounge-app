@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
 import '../../config/theme_config.dart';
 import '../../presentation/providers/transport_location_provider.dart';
 import '../../presentation/providers/registration_provider.dart';
+import '../../presentation/widgets/location_picker_widget.dart';
 import '../../data/models/transport_location_model.dart';
 
 class TukTukServiceSettingsPage extends StatefulWidget {
@@ -15,6 +19,9 @@ class TukTukServiceSettingsPage extends StatefulWidget {
 }
 
 class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
+  static const String _googleMapsApiKey =
+      'AIzaSyAuA_RMUaOuqKOasnd5GU8MdYvrDmToXPg';
+
   final List<String> vehicleTypes = ["Three Wheeler", "Car", "Van"];
   final Map<String, Map<String, TextEditingController>> _priceControllers = {};
   String? _selectedLoungeId;
@@ -192,11 +199,100 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
     final TextEditingController threeWheelerPriceCtrl = TextEditingController();
     final TextEditingController carPriceCtrl = TextEditingController();
     final TextEditingController vanPriceCtrl = TextEditingController();
-    bool isLoadingLocation = false;
     String? selectedLoungeId = _selectedLoungeId;
 
     final registrationProvider = context.read<RegistrationProvider>();
     final verifiedLounges = registrationProvider.verifiedLounges;
+
+    Future<void> autoFillDistanceAndDuration({
+      required double destinationLatitude,
+      required double destinationLongitude,
+      required void Function(void Function()) dialogSetState,
+    }) async {
+      if (selectedLoungeId == null || selectedLoungeId!.isEmpty) {
+        return;
+      }
+
+      final selectedLounges = verifiedLounges
+          .where((lounge) => lounge.id == selectedLoungeId)
+          .toList();
+      if (selectedLounges.isEmpty) {
+        return;
+      }
+
+      final lounge = selectedLounges.first;
+      final loungeLatitude = double.tryParse((lounge.latitude ?? '').trim());
+      final loungeLongitude = double.tryParse((lounge.longitude ?? '').trim());
+
+      if (loungeLatitude == null || loungeLongitude == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Selected lounge has no valid coordinates'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      final uri = Uri.parse(
+        'https://maps.googleapis.com/maps/api/distancematrix/json'
+        '?origins=$loungeLatitude,$loungeLongitude'
+        '&destinations=$destinationLatitude,$destinationLongitude'
+        '&mode=driving'
+        '&key=$_googleMapsApiKey',
+      );
+
+      try {
+        final response = await http.get(uri);
+        if (response.statusCode != 200) {
+          throw Exception('Failed to fetch route information');
+        }
+
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final status = data['status']?.toString();
+        if (status != 'OK') {
+          throw Exception('Google API error: $status');
+        }
+
+        final rows = data['rows'] as List<dynamic>?;
+        final elements = rows?.firstOrNull?['elements'] as List<dynamic>?;
+        final element = elements?.firstOrNull as Map<String, dynamic>?;
+        final elementStatus = element?['status']?.toString();
+
+        if (element == null || elementStatus != 'OK') {
+          throw Exception('No route data available');
+        }
+
+        final distanceMeters =
+            (element['distance']?['value'] as num?)?.toDouble();
+        final durationSeconds =
+            (element['duration']?['value'] as num?)?.toDouble();
+
+        if (distanceMeters == null || durationSeconds == null) {
+          throw Exception('Invalid route data received');
+        }
+
+        final distanceKm = distanceMeters / 1000;
+        final estimatedMinutes = (durationSeconds / 60).ceil();
+
+        dialogSetState(() {
+          distanceCtrl.text = distanceKm.toStringAsFixed(2);
+          estDurationCtrl.text =
+              estimatedMinutes < 1 ? '1' : estimatedMinutes.toString();
+        });
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to calculate route: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
 
     showDialog(
       context: context,
@@ -231,10 +327,23 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
                         child: Text(lounge.loungeName),
                       );
                     }).toList(),
-                    onChanged: (String? newValue) {
+                    onChanged: (String? newValue) async {
                       setState(() {
                         selectedLoungeId = newValue;
                       });
+
+                      final destinationLatitude =
+                          double.tryParse(latCtrl.text.trim());
+                      final destinationLongitude =
+                          double.tryParse(lonCtrl.text.trim());
+                      if (destinationLatitude != null &&
+                          destinationLongitude != null) {
+                        await autoFillDistanceAndDuration(
+                          destinationLatitude: destinationLatitude,
+                          destinationLongitude: destinationLongitude,
+                          dialogSetState: setState,
+                        );
+                      }
                     },
                   ),
                 ),
@@ -390,6 +499,46 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
                           color: AppColors.textPrimary,
                         ),
                       ),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          LatLng? initialLocation;
+                          final existingLat = double.tryParse(latCtrl.text);
+                          final existingLon = double.tryParse(lonCtrl.text);
+                          if (existingLat != null && existingLon != null) {
+                            initialLocation = LatLng(existingLat, existingLon);
+                          }
+
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LocationPickerWidget(
+                                initialLocation: initialLocation,
+                                onLocationSelected: (location, _) async {
+                                  setState(() {
+                                    latCtrl.text =
+                                        location.latitude.toStringAsFixed(6);
+                                    lonCtrl.text =
+                                        location.longitude.toStringAsFixed(6);
+                                  });
+
+                                  await autoFillDistanceAndDuration(
+                                    destinationLatitude: location.latitude,
+                                    destinationLongitude: location.longitude,
+                                    dialogSetState: setState,
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.map),
+                        label: const Text('Select on Map'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          foregroundColor: AppColors.primary,
+                          minimumSize: const Size(double.infinity, 44),
+                        ),
+                      ),
                       // Latitude Field
                       TextField(
                         controller: latCtrl,
@@ -430,84 +579,6 @@ class _TukTukServiceSettingsPageState extends State<TukTukServiceSettingsPage> {
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 12),
-                        ),
-                      ),
-                      // Get Current Location Button
-                      ElevatedButton.icon(
-                        onPressed: isLoadingLocation
-                            ? null
-                            : () async {
-                                setState(() => isLoadingLocation = true);
-                                try {
-                                  final permission =
-                                      await Geolocator.checkPermission();
-                                  if (permission == LocationPermission.denied) {
-                                    await Geolocator.requestPermission();
-                                  }
-
-                                  if (permission ==
-                                      LocationPermission.deniedForever) {
-                                    if (ctx.mounted) {
-                                      ScaffoldMessenger.of(ctx).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                              'Location permission is required'),
-                                          backgroundColor: AppColors.error,
-                                        ),
-                                      );
-                                    }
-                                    return;
-                                  }
-
-                                  final Position position =
-                                      await Geolocator.getCurrentPosition(
-                                    desiredAccuracy: LocationAccuracy.best,
-                                  );
-
-                                  latCtrl.text =
-                                      position.latitude.toStringAsFixed(6);
-                                  lonCtrl.text =
-                                      position.longitude.toStringAsFixed(6);
-
-                                  if (ctx.mounted) {
-                                    ScaffoldMessenger.of(ctx).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Location fetched successfully'),
-                                        backgroundColor: AppColors.success,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (ctx.mounted) {
-                                    ScaffoldMessenger.of(ctx).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                            'Failed to fetch location: $e'),
-                                        backgroundColor: AppColors.error,
-                                      ),
-                                    );
-                                  }
-                                } finally {
-                                  setState(() => isLoadingLocation = false);
-                                }
-                              },
-                        icon: isLoadingLocation
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      AppColors.primary),
-                                ),
-                              )
-                            : const Icon(Icons.my_location),
-                        label: const Text('Get Current Location'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
-                          foregroundColor: AppColors.primary,
-                          minimumSize: const Size(double.infinity, 44),
                         ),
                       ),
                     ],
