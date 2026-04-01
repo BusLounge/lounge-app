@@ -52,7 +52,7 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
   // Routes
   final List<Map<String, dynamic>> _selectedRoutes = [];
 
-  // District selection (local-only for now)
+  // District selection
   late LoungeOwnerRemoteDataSource _loungeOwnerRemoteDataSource;
   List<Map<String, dynamic>> _districts = [];
   String? _selectedDistrictId;
@@ -915,6 +915,17 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
       return;
     }
 
+    // Validate district selection (UUID from /api/v1/districts)
+    if (_selectedDistrictId == null || _selectedDistrictId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a district'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     // Validate photos
     if (_loungePhotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1003,6 +1014,7 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
             ? null
             : _descriptionController.text.trim(),
         address: _addressController.text.trim(),
+        district: _selectedDistrictId,
         state: _stateController.text.trim().isEmpty
             ? null
             : _stateController.text.trim(),
