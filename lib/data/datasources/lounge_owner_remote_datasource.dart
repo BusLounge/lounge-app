@@ -26,6 +26,73 @@ class LoungeOwnerRemoteDataSource {
     return DateTime.now().difference(cachedAt) < _cacheTtl;
   }
 
+  /// Get all districts for dropdown/lookup use cases
+  /// GET /api/v1/districts
+  Future<List<Map<String, dynamic>>> getAllDistricts() async {
+    try {
+      final response = await apiClient.getPublic('/api/v1/districts');
+
+      if (response.statusCode != 200) {
+        throw ServerException('Failed to load districts');
+      }
+
+      final rawData = response.data;
+      if (rawData is! Map<String, dynamic>) {
+        throw ServerException('Invalid districts response format');
+      }
+
+      final districts = rawData['districts'];
+      if (districts is! List) {
+        return [];
+      }
+
+      return districts
+          .whereType<Map<String, dynamic>>()
+          .map((district) {
+            return {
+              'id': district['id']?.toString() ?? '',
+              'district': district['district']?.toString() ?? '',
+            };
+          })
+          .where((district) => (district['district'] as String).isNotEmpty)
+          .toList();
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  /// Get district by ID
+  /// GET /api/v1/districts/{id}
+  Future<Map<String, dynamic>> getDistrictById(String id) async {
+    try {
+      final response = await apiClient.getPublic('/api/v1/districts/$id');
+
+      if (response.statusCode != 200) {
+        throw ServerException('Failed to load district');
+      }
+
+      final rawData = response.data;
+      if (rawData is! Map<String, dynamic>) {
+        throw ServerException('Invalid district response format');
+      }
+
+      final district = rawData['district'];
+      if (district is Map<String, dynamic>) {
+        return {
+          'id': district['id']?.toString() ?? '',
+          'district': district['district']?.toString() ?? '',
+        };
+      }
+
+      return {
+        'id': '',
+        'district': '',
+      };
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
   /// Save business and manager information (Step 1)
   /// POST /api/v1/lounge-owner/register/business-info
   Future<void> saveBusinessInfo({

@@ -400,9 +400,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     return Consumer<MarketplaceProvider>(
       builder: (context, provider, _) {
         final categories = provider.categories;
+        final hasSelectedCategory = categories.any(
+          (category) => category.id == _selectedCategoryId,
+        );
+        final effectiveSelectedCategoryId =
+            hasSelectedCategory ? _selectedCategoryId : null;
 
         return DropdownButtonFormField<String>(
-          value: _selectedCategoryId,
+          value: effectiveSelectedCategoryId,
           decoration: const InputDecoration(labelText: 'Category *'),
           items: categories.map((category) {
             return DropdownMenuItem<String>(

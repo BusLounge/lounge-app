@@ -10,6 +10,7 @@ import '../../presentation/widgets/location_picker_widget.dart';
 import '../../domain/entities/lounge.dart';
 import '../../domain/entities/lounge_route.dart';
 import '../../core/di/injection_container.dart';
+import '../../data/datasources/lounge_owner_remote_datasource.dart';
 import '../../data/datasources/route_remote_datasource.dart';
 import '../../data/models/route_model.dart';
 
@@ -41,7 +42,6 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
   // Location
   double? _selectedLatitude;
   double? _selectedLongitude;
-  String? _selectedAddress;
 
   // Amenities
   final List<String> _selectedAmenities = [];
@@ -52,11 +52,21 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
   // Routes
   final List<Map<String, dynamic>> _selectedRoutes = [];
 
+  // District selection (local-only for now)
+  late LoungeOwnerRemoteDataSource _loungeOwnerRemoteDataSource;
+  List<Map<String, dynamic>> _districts = [];
+  String? _selectedDistrictId;
+  bool _isLoadingDistricts = true;
+  String? _districtsError;
+
   bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
+    _loungeOwnerRemoteDataSource =
+        InjectionContainer().loungeOwnerRemoteDataSource;
+    _loadDistricts();
     // Reset provider state for new lounge
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<RegistrationProvider>(
@@ -66,6 +76,29 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
       provider.clearLoungePhotos();
       provider.clearRoutes();
     });
+  }
+
+  Future<void> _loadDistricts() async {
+    setState(() {
+      _isLoadingDistricts = true;
+      _districtsError = null;
+    });
+
+    try {
+      final districts = await _loungeOwnerRemoteDataSource.getAllDistricts();
+      if (!mounted) return;
+      setState(() {
+        _districts = districts;
+        _isLoadingDistricts = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _districts = [];
+        _isLoadingDistricts = false;
+        _districtsError = 'Failed to load districts';
+      });
+    }
   }
 
   @override
@@ -302,6 +335,84 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
           },
         ),
         const SizedBox(height: 16),
+        if (_isLoadingDistricts)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 12),
+                Text('Loading districts...'),
+              ],
+            ),
+          )
+        else if (_districtsError != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.08),
+              border: Border.all(color: Colors.red.withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _districtsError!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _loadDistricts,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          )
+        else
+          DropdownButtonFormField<String>(
+            value: _selectedDistrictId,
+            decoration: InputDecoration(
+              labelText: 'District *',
+              hintText: 'Select lounge district',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.map_outlined),
+            ),
+            items: _districts.map((district) {
+              final id = district['id'] as String? ?? '';
+              final name = district['district'] as String? ?? '';
+              return DropdownMenuItem<String>(
+                value: id,
+                child: Text(name),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedDistrictId = value;
+              });
+            },
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please select a district';
+              }
+              return null;
+            },
+          ),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -420,7 +531,6 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
                   setState(() {
                     _selectedLatitude = location.latitude;
                     _selectedLongitude = location.longitude;
-                    _selectedAddress = address;
                   });
                 },
               ),

@@ -22,6 +22,7 @@ class MarketplaceProvider extends ChangeNotifier {
     'wi-fi',
     'shower',
     'rest area',
+    'storage',
   };
 
   MarketplaceProvider({required MarketplaceRepository repository})
