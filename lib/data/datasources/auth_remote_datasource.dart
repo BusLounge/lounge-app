@@ -534,6 +534,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         );
       }
 
+      final isInvalidNicError =
+          (rawData.contains('nic') || rawData.contains('id number')) &&
+              (rawData.contains('invalid') ||
+                  rawData.contains('format') ||
+                  rawData.contains('not valid'));
+
+      if (isInvalidNicError) {
+        return ServerException(
+          'ID number format is incorrect. Use 12 digits or 9 digits + 1 letter.',
+          'INVALID_NIC_FORMAT',
+          statusCode,
+        );
+      }
+
       final isDuplicateEmailError = (rawData.contains('users_email_key') ||
           (rawData.contains('email') &&
               (rawData.contains('duplicate') ||

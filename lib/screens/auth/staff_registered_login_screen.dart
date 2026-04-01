@@ -5,11 +5,8 @@ import 'package:provider/provider.dart';
 import '../../config/constants.dart';
 import '../../config/theme_config.dart';
 import '../../presentation/providers/auth_provider.dart';
-import '../../presentation/providers/lounge_staff_provider.dart';
-import '../../screens/auth/staff_pending_approval_screen.dart';
-import '../../screens/staff/staff_dashboard_screen.dart';
+import 'staff_registered_login_otp_screen.dart';
 import '../../widgets/custom_button.dart';
-import '../../widgets/error_dialog.dart';
 import '../../widgets/loading_overlay.dart';
 
 class NoLeadingZeroFormatter extends TextInputFormatter {
@@ -36,30 +33,70 @@ class StaffRegisteredLoginScreen extends StatefulWidget {
 class _StaffRegisteredLoginScreenState
     extends State<StaffRegisteredLoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _otpController = TextEditingController();
   final _phoneController = TextEditingController();
 
   String _completePhoneNumber = '';
   bool _isPhoneValid = false;
-  bool _otpSent = false;
   bool _isSendingOtp = false;
-  bool _isVerifying = false;
+  String? _topErrorMessage;
+
+  String _mapUserErrorMessage(String? message) {
+    final raw = (message ?? '').trim();
+    if (raw.isEmpty) {
+      return 'OTP verification failed';
+    }
+
+    final lower = raw.toLowerCase();
+    if ((lower.contains('lounge') &&
+            lower.contains('not') &&
+            lower.contains('approved')) ||
+        lower.contains('lounge_not_approved') ||
+        lower.contains('selected_lounge_not_approved')) {
+      return 'The selected lounge is not yet approved. Please try another lounge.';
+    }
+
+    if (lower.contains('nic') &&
+        (lower.contains('invalid') ||
+            lower.contains('format') ||
+            lower.contains('not valid'))) {
+      return 'ID number format is incorrect. Use 12 digits or 9 digits + 1 letter.';
+    }
+
+    if ((lower.contains('failed to create user account') ||
+            lower.contains('user_creation_failed')) &&
+        !lower.contains('email')) {
+      return 'This email is already registered. Please retype a different email address.';
+    }
+
+    if ((lower.contains('email') || lower.contains('users_email_key')) &&
+        (lower.contains('already') ||
+            lower.contains('duplicate') ||
+            lower.contains('exists') ||
+            lower.contains('registered') ||
+            lower.contains('23505'))) {
+      return 'This email is already registered.';
+    }
+
+    return raw;
+  }
 
   @override
   void dispose() {
-    _otpController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
   Future<void> _sendOtp() async {
     if (_completePhoneNumber.isEmpty || !_isPhoneValid) {
-      ErrorDialog.show(
-        context: context,
-        message: AppConstants.invalidPhoneError,
-      );
+      setState(() {
+        _topErrorMessage = AppConstants.invalidPhoneError;
+      });
       return;
     }
+
+    setState(() {
+      _topErrorMessage = null;
+    });
 
     setState(() {
       _isSendingOtp = true;
@@ -72,7 +109,6 @@ class _StaffRegisteredLoginScreenState
 
     setState(() {
       _isSendingOtp = false;
-      _otpSent = success;
     });
 
     if (success) {
@@ -83,77 +119,19 @@ class _StaffRegisteredLoginScreenState
           duration: Duration(seconds: 3),
         ),
       );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StaffRegisteredLoginOtpScreen(
+            phoneNumber: _completePhoneNumber,
+          ),
+        ),
+      );
     } else {
-      ErrorDialog.show(
-        context: context,
-        message: authProvider.error ?? 'Failed to send OTP',
-        onRetry: _sendOtp,
-      );
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (!_otpSent) {
-      ErrorDialog.show(
-        context: context,
-        message: 'Please request and enter the OTP first',
-      );
-      return;
-    }
-
-    setState(() {
-      _isVerifying = true;
-    });
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final loungeStaffProvider =
-        Provider.of<LoungeStaffProvider>(context, listen: false);
-
-    final result = await authProvider.verifyOtpLoungeStaffRegistered(
-      phoneNumber: _completePhoneNumber,
-      otp: _otpController.text,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      final profileLoaded = await loungeStaffProvider.getMyStaffProfile();
-      if (!mounted) return;
-
-      if (profileLoaded && loungeStaffProvider.selectedStaff != null) {
-        final staff = loungeStaffProvider.selectedStaff!;
-        if (staff.isApproved) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const StaffDashboardScreen()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const StaffPendingApprovalScreen()),
-          );
-        }
-      } else {
-        ErrorDialog.show(
-          context: context,
-          message: 'Failed to load staff profile',
-        );
-      }
-    } else {
-      ErrorDialog.show(
-        context: context,
-        message: result['message'] ?? 'OTP verification failed',
-      );
-    }
-
-    if (mounted) {
       setState(() {
-        _isVerifying = false;
+        _topErrorMessage =
+            _mapUserErrorMessage(authProvider.error ?? 'Failed to send OTP');
       });
     }
   }
@@ -161,8 +139,7 @@ class _StaffRegisteredLoginScreenState
   @override
   Widget build(BuildContext context) {
     return LoadingOverlay(
-      isLoading: _isVerifying,
-      message: 'Verifying OTP...',
+      isLoading: _isSendingOtp,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -186,6 +163,24 @@ class _StaffRegisteredLoginScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_topErrorMessage != null) ...[
+                    MaterialBanner(
+                      content: Text(_topErrorMessage!),
+                      backgroundColor: AppColors.error.withOpacity(0.1),
+                      contentTextStyle: const TextStyle(color: AppColors.error),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _topErrorMessage = null;
+                            });
+                          },
+                          child: const Text('Dismiss'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   const SizedBox(height: AppSpacing.small),
                   const Text(
                     'Enter your phone number to continue',
@@ -229,42 +224,6 @@ class _StaffRegisteredLoginScreenState
                       text: _isSendingOtp ? 'Sending OTP...' : 'Send OTP',
                       isLoading: _isSendingOtp,
                       height: 48,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _otpController,
-                    keyboardType: TextInputType.number,
-                    maxLength: AppConstants.otpLength,
-                    enabled: _otpSent,
-                    decoration: InputDecoration(
-                      labelText: 'OTP Code',
-                      hintText: 'Enter 6-digit OTP',
-                      prefixIcon: const Icon(Icons.security),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (!_otpSent) {
-                        return 'Please request OTP first';
-                      }
-                      if (value?.isEmpty ?? true) {
-                        return 'OTP is required';
-                      }
-                      if (value!.length != AppConstants.otpLength) {
-                        return 'OTP must be ${AppConstants.otpLength} digits';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.large),
-                  SizedBox(
-                    width: double.infinity,
-                    child: CustomButton(
-                      onPressed: _isVerifying ? null : _verifyOtp,
-                      text: 'Continue',
-                      isLoading: _isVerifying,
                     ),
                   ),
                 ],

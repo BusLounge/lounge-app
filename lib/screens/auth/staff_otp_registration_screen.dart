@@ -11,6 +11,7 @@ import '../../widgets/error_dialog.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../data/datasources/lounge_owner_remote_datasource.dart';
 import '../../core/di/injection_container.dart';
+import 'staff_registration_otp_screen.dart';
 
 class NoLeadingZeroFormatter extends TextInputFormatter {
   @override
@@ -44,7 +45,6 @@ class StaffOtpRegistrationScreen extends StatefulWidget {
 
 class _StaffOtpRegistrationScreenState
     extends State<StaffOtpRegistrationScreen> {
-  final _otpController = TextEditingController();
   final _fullNameController = TextEditingController();
   final _nicController = TextEditingController();
   final _emailController = TextEditingController();
@@ -54,7 +54,6 @@ class _StaffOtpRegistrationScreenState
 
   String _completePhoneNumber = '';
   bool _isPhoneValid = false;
-  bool _otpSent = false;
   bool _isSendingOtp = false;
 
   bool _isValidNic(String value) {
@@ -78,39 +77,6 @@ class _StaffOtpRegistrationScreenState
       return '0${digits.substring(2)}';
     }
     return null;
-  }
-
-  String _mapUserErrorMessage(String? message) {
-    final raw = (message ?? '').trim();
-    if (raw.isEmpty) {
-      return 'Registration failed. Please try again.';
-    }
-
-    final lower = raw.toLowerCase();
-    if ((lower.contains('lounge') &&
-            lower.contains('not') &&
-            lower.contains('approved')) ||
-        lower.contains('lounge_not_approved') ||
-        lower.contains('selected_lounge_not_approved')) {
-      return 'The selected lounge is not yet approved. Please try another lounge.';
-    }
-
-    if ((lower.contains('failed to create user account') ||
-            lower.contains('user_creation_failed')) &&
-        !lower.contains('email')) {
-      return 'This email is already registered. Please retype a different email address.';
-    }
-
-    if ((lower.contains('email') || lower.contains('users_email_key')) &&
-        (lower.contains('already') ||
-            lower.contains('duplicate') ||
-            lower.contains('exists') ||
-            lower.contains('registered') ||
-            lower.contains('23505'))) {
-      return 'This email is already registered.';
-    }
-
-    return raw;
   }
 
   // District → Lounge Owners mapping
@@ -143,7 +109,6 @@ class _StaffOtpRegistrationScreenState
 
   @override
   void dispose() {
-    _otpController.dispose();
     _fullNameController.dispose();
     _nicController.dispose();
     _emailController.dispose();
@@ -227,95 +192,19 @@ class _StaffOtpRegistrationScreenState
     }
   }
 
-  Future<void> _submitRegistration() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      if (!_otpSent) {
-        ErrorDialog.show(
-          context: context,
-          message: 'Please request and enter the OTP first',
-        );
-        return;
-      }
-
-      if (_completePhoneNumber.isEmpty || !_isPhoneValid) {
-        ErrorDialog.show(
-          context: context,
-          message: 'Phone number must be exactly 10 digits',
-        );
-        return;
-      }
-
-      if (_selectedLoungeId == null) {
-        ErrorDialog.show(
-          context: context,
-          message: 'Please select a lounge',
-        );
-        return;
-      }
-
-      setState(() {
-        _isSubmitting = true;
-      });
-
-      try {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-        _logger.i('📱 Submitting staff registration with OTP...');
-        _logger.i('   Phone: $_completePhoneNumber');
-        _logger.i('   Full Name: ${_fullNameController.text}');
-        _logger.i('   Email: ${_emailController.text}');
-        _logger.i('   Lounge ID: $_selectedLoungeId');
-
-        final result = await authProvider.verifyOtpLoungeStaff(
-          phoneNumber: _completePhoneNumber,
-          otp: _otpController.text,
-          loungeId: _selectedLoungeId!,
-          fullName: _fullNameController.text.trim(),
-          nicNumber: _nicController.text.trim().toUpperCase(),
-          email: _emailController.text.trim(),
-        );
-
-        if (!mounted) return;
-
-        if (result['success'] == true) {
-          _logger.i('✅ Staff registration successful');
-
-          // Navigate to pending approval screen
-          Navigator.pushReplacementNamed(
-            context,
-            '/staff-pending-approval',
-            arguments: {
-              'loungeId': _selectedLoungeId,
-            },
-          );
-        } else {
-          _logger.e('❌ Registration failed: ${result['message']}');
-          ErrorDialog.show(
-            context: context,
-            message: _mapUserErrorMessage(
-              (result['message'] as String?) ?? authProvider.error,
-            ),
-          );
-        }
-      } catch (e) {
-        _logger.e('❌ Error during registration: $e');
-        if (mounted) {
-          ErrorDialog.show(
-            context: context,
-            message: 'An error occurred. Please try again.',
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isSubmitting = false;
-          });
-        }
-      }
-    }
-  }
-
   Future<void> _sendOtp() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    if (_selectedLoungeId == null) {
+      ErrorDialog.show(
+        context: context,
+        message: 'Please select a lounge',
+      );
+      return;
+    }
+
     if (_completePhoneNumber.isEmpty || !_isPhoneValid) {
       ErrorDialog.show(
         context: context,
@@ -335,7 +224,6 @@ class _StaffOtpRegistrationScreenState
 
     setState(() {
       _isSendingOtp = false;
-      _otpSent = success;
     });
 
     if (success) {
@@ -344,6 +232,19 @@ class _StaffOtpRegistrationScreenState
           content: Text('OTP sent to your phone. Please check your messages.'),
           backgroundColor: AppColors.success,
           duration: Duration(seconds: 3),
+        ),
+      );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StaffRegistrationOtpScreen(
+            phoneNumber: _completePhoneNumber,
+            loungeId: _selectedLoungeId!,
+            fullName: _fullNameController.text.trim(),
+            nicNumber: _nicController.text.trim().toUpperCase(),
+            email: _emailController.text.trim(),
+          ),
         ),
       );
     } else {
@@ -769,35 +670,6 @@ class _StaffOtpRegistrationScreenState
                   ),
                   const SizedBox(height: 16),
 
-                  // OTP Field
-                  TextFormField(
-                    controller: _otpController,
-                    keyboardType: TextInputType.number,
-                    maxLength: AppConstants.otpLength,
-                    enabled: _otpSent,
-                    decoration: InputDecoration(
-                      labelText: 'OTP Code',
-                      hintText: 'Enter 6-digit OTP',
-                      prefixIcon: const Icon(Icons.security),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (!_otpSent) {
-                        return 'Please request OTP first';
-                      }
-                      if (value?.isEmpty ?? true) {
-                        return 'OTP is required';
-                      }
-                      if (value!.length != AppConstants.otpLength) {
-                        return 'OTP must be ${AppConstants.otpLength} digits';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
                   // Info Box
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -825,18 +697,6 @@ class _StaffOtpRegistrationScreenState
                     ),
                   ),
                   const SizedBox(height: 24),
-
-                  // Submit Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: CustomButton(
-                      onPressed: _isSubmitting ? null : _submitRegistration,
-                      text: _isSubmitting
-                          ? 'Registering...'
-                          : 'Complete Registration',
-                      isLoading: _isSubmitting,
-                    ),
-                  ),
                   const SizedBox(height: 16),
                 ],
               ),

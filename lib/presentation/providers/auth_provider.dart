@@ -413,6 +413,13 @@ class AuthProvider extends ChangeNotifier {
       return 'The selected lounge is not yet approved. Please try another lounge.';
     }
 
+    if ((lower.contains('nic') || lower.contains('id number')) &&
+        (lower.contains('invalid') ||
+            lower.contains('format') ||
+            lower.contains('not valid'))) {
+      return 'ID number format is incorrect. Use 12 digits or 9 digits + 1 letter.';
+    }
+
     if ((lower.contains('failed to create user account') ||
             lower.contains('user_creation_failed')) &&
         !lower.contains('email')) {
