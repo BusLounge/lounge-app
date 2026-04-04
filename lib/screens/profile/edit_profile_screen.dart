@@ -87,7 +87,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         managerFullName: _fullNameController.text.trim(),
         managerEmail: _emailController.text.trim(),
         managerNicNumber: _nicController.text.trim(),
-        district: _districtController.text.trim(),
+        districtId: _districtController.text.trim(),
       );
 
       if (ownerUpdateSuccess) {

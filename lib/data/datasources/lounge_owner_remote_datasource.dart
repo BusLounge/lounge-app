@@ -101,7 +101,7 @@ class LoungeOwnerRemoteDataSource {
     required String managerFullName,
     required String managerNicNumber,
     required String managerEmail,
-    required String district,
+    required String districtId,
   }) async {
     try {
       print('📤 Sending business info request...');
@@ -110,18 +110,30 @@ class LoungeOwnerRemoteDataSource {
       print('   Manager Name: $managerFullName');
       print('   Manager NIC: $managerNicNumber');
       print('   Manager Email: $managerEmail');
-      print('   District: $district');
+      print('   District ID: $districtId');
+
+      final payload = <String, dynamic>{
+        'business_name': businessName,
+        'manager_full_name': managerFullName,
+        'manager_nic_number': managerNicNumber,
+        'district_id': districtId,
+      };
+
+      if (businessLicense.trim().isNotEmpty) {
+        payload['business_license'] = businessLicense.trim();
+      }
+
+      if (managerEmail.trim().isNotEmpty) {
+        payload['manager_email'] = managerEmail.trim();
+      }
+
+      payload['district'] = districtId;
+
+      print('📤 Business info payload: $payload');
 
       final response = await apiClient.post(
         '/api/v1/lounge-owner/register/business-info',
-        data: {
-          'business_name': businessName,
-          'business_license': businessLicense,
-          'manager_full_name': managerFullName,
-          'manager_nic_number': managerNicNumber,
-          'manager_email': managerEmail,
-          'district': district,
-        },
+        data: payload,
       );
 
       print('✅ Business info saved successfully');
@@ -377,6 +389,59 @@ class LoungeOwnerRemoteDataSource {
     }
   }
 
+  /// Get approved lounge owners by district UUID
+  /// GET /api/v1/lounge-owner/approved/by-district/{district_id}
+  Future<List<Map<String, dynamic>>> getApprovedLoungeOwnersByDistrictId(
+    String districtId,
+  ) async {
+    try {
+      final response = await apiClient.getPublic(
+        '/api/v1/lounge-owner/approved/by-district/$districtId',
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException('Failed to get lounge owners for district');
+      }
+
+      final rawData = response.data;
+      if (rawData is! Map<String, dynamic>) {
+        return [];
+      }
+
+      final owners = rawData['lounge_owners'] ??
+          (rawData['data'] is Map<String, dynamic>
+              ? (rawData['data'] as Map<String, dynamic>)['lounge_owners']
+              : null) ??
+          rawData['owners'];
+      if (owners is! List) {
+        return [];
+      }
+
+      return owners.whereType<Map<String, dynamic>>().toList();
+    } on DioException catch (e) {
+      final bool isNetworkIssue = e.response == null;
+      final dynamic responseData = e.response?.data;
+      String errorMessage;
+
+      if (isNetworkIssue) {
+        errorMessage =
+            'Network timeout. Please check backend server and internet connection.';
+      } else if (responseData is Map<String, dynamic>) {
+        errorMessage = (responseData['message'] ??
+                responseData['error'] ??
+                e.message ??
+                'Unknown error')
+            .toString();
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
+      throw ServerException('Get lounge owners failed: $errorMessage');
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
   /// Get lounges owned by a specific lounge owner
   /// GET /api/v1/lounge-owner/:owner_id/lounges
   Future<List<Map<String, dynamic>>> getLoungesByOwnerId(String ownerId) async {
@@ -403,6 +468,65 @@ class LoungeOwnerRemoteDataSource {
       return lounges;
     } finally {
       _ownerLoungesInFlight.remove(ownerId);
+    }
+  }
+
+  /// Get lounges by owner ID and district ID
+  /// GET /api/v1/lounge-owner/{owner_id}/lounges/by-district/{district_id}
+  Future<List<Map<String, dynamic>>> getLoungesByOwnerAndDistrictId({
+    required String ownerId,
+    required String districtId,
+  }) async {
+    try {
+      final response = await apiClient.getPublic(
+        '/api/v1/lounge-owner/$ownerId/lounges/by-district/$districtId',
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException('Failed to get lounges for owner and district');
+      }
+
+      final rawData = response.data;
+      if (rawData is List) {
+        return rawData.whereType<Map<String, dynamic>>().toList();
+      }
+
+      if (rawData is! Map<String, dynamic>) {
+        return [];
+      }
+
+      final lounges = rawData['lounges'] ??
+          (rawData['data'] is Map<String, dynamic>
+              ? (rawData['data'] as Map<String, dynamic>)['lounges']
+              : null) ??
+          rawData['results'];
+
+      if (lounges is! List) {
+        return [];
+      }
+
+      return lounges.whereType<Map<String, dynamic>>().toList();
+    } on DioException catch (e) {
+      final bool isNetworkIssue = e.response == null;
+      final dynamic responseData = e.response?.data;
+      String errorMessage;
+
+      if (isNetworkIssue) {
+        errorMessage =
+            'Network timeout. Please check backend server and internet connection.';
+      } else if (responseData is Map<String, dynamic>) {
+        errorMessage = (responseData['message'] ??
+                responseData['error'] ??
+                e.message ??
+                'Unknown error')
+            .toString();
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
+      throw ServerException('Get lounges failed: $errorMessage');
+    } catch (e) {
+      throw ServerException(e.toString());
     }
   }
 
@@ -475,7 +599,7 @@ class LoungeOwnerRemoteDataSource {
     String? managerFullName,
     String? managerNicNumber,
     String? managerEmail,
-    String? district,
+    String? districtId,
   }) async {
     try {
       print('📤 Sending lounge owner profile update request...');
@@ -485,16 +609,23 @@ class LoungeOwnerRemoteDataSource {
       if (managerFullName != null) print('   Manager Name: $managerFullName');
       if (managerNicNumber != null) print('   Manager NIC: $managerNicNumber');
       if (managerEmail != null) print('   Manager Email: $managerEmail');
-      if (district != null) print('   District: $district');
+      if (districtId != null) print('   District ID: $districtId');
 
       final data = <String, dynamic>{};
       if (businessName != null) data['business_name'] = businessName;
-      if (businessLicense != null) data['business_license'] = businessLicense;
+      if (businessLicense != null) {
+        data['business_registration_number'] = businessLicense;
+      }
       if (managerFullName != null) data['manager_full_name'] = managerFullName;
       if (managerNicNumber != null)
         data['manager_nic_number'] = managerNicNumber;
       if (managerEmail != null) data['manager_email'] = managerEmail;
-      if (district != null) data['district'] = district;
+      if (districtId != null) {
+        data['district'] = districtId;
+        data['district_id'] = districtId;
+      }
+
+      print('📤 Profile update payload: $data');
 
       final response = await apiClient.put(
         '/api/v1/lounge-owner/profile/update',

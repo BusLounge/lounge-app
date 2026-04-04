@@ -27,6 +27,7 @@ class RegistrationProvider with ChangeNotifier {
   // Step 1: Business & Manager Info
   String? _businessName;
   String? _businessLicense;
+  String? _businessAddress;
   String? _managerFullName;
   String? _managerNicNumber;
   String? _managerEmail;
@@ -64,6 +65,7 @@ class RegistrationProvider with ChangeNotifier {
   // Step 1 Getters
   String? get businessName => _businessName;
   String? get businessLicense => _businessLicense;
+  String? get businessAddress => _businessAddress;
   String? get managerFullName => _managerFullName;
   String? get managerNicNumber => _managerNicNumber;
   String? get managerEmail => _managerEmail;
@@ -180,12 +182,14 @@ class RegistrationProvider with ChangeNotifier {
   void saveBusinessInfoData({
     required String businessName,
     required String businessLicense,
+    String? businessAddress,
     required String managerFullName,
     required String managerNicNumber,
     required String managerEmail,
   }) {
     _businessName = businessName;
     _businessLicense = businessLicense;
+    _businessAddress = businessAddress;
     _managerFullName = managerFullName;
     _managerNicNumber = managerNicNumber;
     _managerEmail = managerEmail;

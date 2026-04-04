@@ -13,7 +13,7 @@ class SaveBusinessInfo {
     required String managerFullName,
     required String managerNicNumber,
     required String managerEmail,
-    required String district,
+    required String districtId,
   }) async {
     // Validate business name
     if (businessName.trim().isEmpty) {
@@ -29,7 +29,7 @@ class SaveBusinessInfo {
     if (managerNicNumber.trim().isEmpty) {
       return Left(ValidationFailure('Manager NIC number is required'));
     }
-    
+
     // Validate NIC format (Sri Lankan NIC: 9 digits + V or 12 digits)
     final nicPattern = RegExp(r'^(\d{9}[VvXx]|\d{12})$');
     if (!nicPattern.hasMatch(managerNicNumber.trim())) {
@@ -45,7 +45,7 @@ class SaveBusinessInfo {
     }
 
     // Validate district
-    if (district.trim().isEmpty) {
+    if (districtId.trim().isEmpty) {
       return Left(ValidationFailure('District is required'));
     }
 
@@ -54,7 +54,7 @@ class SaveBusinessInfo {
       businessLicense: businessLicense.trim(),
       managerFullName: managerFullName.trim(),
       managerNicNumber: managerNicNumber.trim().toUpperCase(),
-      district: district.trim(),
+      districtId: districtId.trim(),
       managerEmail: managerEmail.trim(),
     );
   }

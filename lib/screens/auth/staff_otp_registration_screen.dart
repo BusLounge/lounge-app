@@ -79,8 +79,9 @@ class _StaffOtpRegistrationScreenState
     return null;
   }
 
-  // District → Lounge Owners mapping
-  Map<String, List<Map<String, dynamic>>> _districtOwnersMap = {};
+  // Districts and owners for selected district
+  List<Map<String, dynamic>> _districts = [];
+  List<Map<String, dynamic>> _ownersForSelectedDistrict = [];
 
   // Selected values
   String? _selectedDistrict;
@@ -92,8 +93,10 @@ class _StaffOtpRegistrationScreenState
 
   // Loading states
   bool _isLoadingDistricts = true;
+  bool _isLoadingOwners = false;
   bool _isLoadingLounges = false;
   bool _isSubmitting = false;
+  String? _ownersError;
   late LoungeOwnerRemoteDataSource _loungeOwnerDataSource;
 
   @override
@@ -118,19 +121,18 @@ class _StaffOtpRegistrationScreenState
 
   Future<void> _loadDistricts() async {
     try {
-      _logger.i('📍 Fetching districts with lounge owners...');
+      _logger.i('📍 Fetching districts...');
 
-      final districtOwnersMap = await _loungeOwnerDataSource
-          .getApprovedLoungeOwnersGroupedByDistrict();
+      final districts = await _loungeOwnerDataSource.getAllDistricts();
 
       if (mounted) {
         setState(() {
-          _districtOwnersMap = districtOwnersMap;
+          _districts = districts;
           _isLoadingDistricts = false;
         });
       }
 
-      _logger.i('✅ Loaded owners for ${districtOwnersMap.length} districts');
+      _logger.i('✅ Loaded ${districts.length} districts');
     } catch (e) {
       _logger.e('❌ Error loading districts: $e');
       if (mounted) {
@@ -145,30 +147,67 @@ class _StaffOtpRegistrationScreenState
     }
   }
 
-  Future<void> _onDistrictChanged(String? district) async {
-    if (district == null) return;
+  Future<void> _onDistrictChanged(String? districtId) async {
+    if (districtId == null || districtId.isEmpty) return;
 
     setState(() {
-      _selectedDistrict = district;
+      _selectedDistrict = districtId;
       _selectedOwnerId = null;
       _selectedLoungeId = null;
       _loungesForSelectedOwner = [];
+      _ownersForSelectedDistrict = [];
+      _ownersError = null;
+      _isLoadingOwners = true;
     });
+
+    try {
+      _logger.i('📍 Fetching approved owners for district: $districtId');
+      final owners = await _loungeOwnerDataSource
+          .getApprovedLoungeOwnersByDistrictId(districtId);
+
+      if (mounted) {
+        setState(() {
+          _ownersForSelectedDistrict = owners;
+          _isLoadingOwners = false;
+        });
+      }
+      _logger.i('✅ Loaded ${owners.length} owners for district');
+    } catch (e) {
+      _logger.e('❌ Error loading owners for district: $e');
+      if (mounted) {
+        setState(() {
+          _ownersForSelectedDistrict = [];
+          _isLoadingOwners = false;
+          _ownersError = 'Failed to load lounge owners';
+        });
+      }
+    }
   }
 
   Future<void> _onOwnerChanged(String? ownerId) async {
     if (ownerId == null) return;
 
+    if (_selectedDistrict == null || _selectedDistrict!.isEmpty) {
+      return;
+    }
+
     setState(() {
       _selectedOwnerId = ownerId;
       _selectedLoungeId = null;
+      _loungesForSelectedOwner = [];
       _isLoadingLounges = true;
     });
 
     try {
-      _logger.i('📍 Fetching lounges for owner: $ownerId');
+      final districtId = _selectedDistrict!;
+      _logger.i(
+          '📍 Fetching lounges for owner: $ownerId in district: $districtId');
 
-      final lounges = await _loungeOwnerDataSource.getLoungesByOwnerId(ownerId);
+      final lounges =
+          await _loungeOwnerDataSource.getLoungesByOwnerAndDistrictId(
+        ownerId: ownerId,
+        districtId: districtId,
+      );
 
       if (mounted) {
         setState(() {
@@ -177,7 +216,7 @@ class _StaffOtpRegistrationScreenState
         });
       }
 
-      _logger.i('✅ Loaded ${lounges.length} lounges');
+      _logger.i('✅ Loaded ${_loungesForSelectedOwner.length} lounges');
     } catch (e) {
       _logger.e('❌ Error loading lounges: $e');
       if (mounted) {
@@ -396,10 +435,13 @@ class _StaffOtpRegistrationScreenState
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              items: _districtOwnersMap.keys.map((district) {
+                              items: _districts.map((district) {
+                                final id = district['id'] as String? ?? '';
+                                final name =
+                                    district['district'] as String? ?? '';
                                 return DropdownMenuItem<String>(
-                                  value: district,
-                                  child: Text(district),
+                                  value: id,
+                                  child: Text(name),
                                 );
                               }).toList(),
                               onChanged: _onDistrictChanged,
@@ -441,82 +483,128 @@ class _StaffOtpRegistrationScreenState
                             ],
                           ),
                         )
-                      : ((_districtOwnersMap[_selectedDistrict] ?? []).isEmpty)
-                          ? Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: AppColors.warning.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.info_outline,
-                                    color: AppColors.warning,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      'No lounge owners in selected district',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: AppColors.warning,
-                                          ),
-                                    ),
-                                  ),
-                                ],
+                      : _isLoadingOwners
+                          ? const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(
+                                child: CircularProgressIndicator(),
                               ),
                             )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Select Lounge Owner',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(fontWeight: FontWeight.w600),
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<String>(
-                                  value: _selectedOwnerId,
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(Icons.person),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                          : _ownersError != null
+                              ? Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.error.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: AppColors.error.withOpacity(0.3),
                                     ),
                                   ),
-                                  items:
-                                      (_districtOwnersMap[_selectedDistrict] ??
-                                              [])
-                                          .map((owner) {
-                                    final id = owner['id'] as String? ?? '';
-                                    final name =
-                                        owner['business_name'] as String? ??
-                                            owner['manager_name'] as String? ??
-                                            owner['owner_name'] as String? ??
-                                            owner['name'] as String? ??
-                                            'Unknown';
-                                    return DropdownMenuItem<String>(
-                                      value: id,
-                                      child: Text(name),
-                                    );
-                                  }).toList(),
-                                  onChanged: _onOwnerChanged,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please select a lounge owner';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ],
-                            ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: AppColors.error,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _ownersError!,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: AppColors.error,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _ownersForSelectedDistrict.isEmpty
+                                  ? Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            AppColors.warning.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: AppColors.warning
+                                              .withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.info_outline,
+                                            color: AppColors.warning,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              'No lounge owners in selected district',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                    color: AppColors.warning,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Select Lounge Owner',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                  fontWeight: FontWeight.w600),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        DropdownButtonFormField<String>(
+                                          value: _selectedOwnerId,
+                                          decoration: InputDecoration(
+                                            prefixIcon:
+                                                const Icon(Icons.person),
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          items: _ownersForSelectedDistrict
+                                              .map((owner) {
+                                            final id =
+                                                owner['id'] as String? ?? '';
+                                            final name = owner['business_name']
+                                                    as String? ??
+                                                owner['manager_name']
+                                                    as String? ??
+                                                owner['owner_name']
+                                                    as String? ??
+                                                owner['name'] as String? ??
+                                                'Unknown';
+                                            return DropdownMenuItem<String>(
+                                              value: id,
+                                              child: Text(name),
+                                            );
+                                          }).toList(),
+                                          onChanged: _onOwnerChanged,
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Please select a lounge owner';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ],
+                                    ),
                   const SizedBox(height: 16),
 
                   // Lounge Selection

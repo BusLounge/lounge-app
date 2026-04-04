@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lounge_owner_app/screens/lounge_owner/lounge_owner_registration_screen.dart';
 import 'package:provider/provider.dart';
+import '../../core/di/injection_container.dart';
+import '../../data/datasources/lounge_owner_remote_datasource.dart';
 import '../../presentation/providers/role_selection_provider.dart';
 import '../../config/theme_config.dart';
 import '../staff/staff_registration_page.dart';
@@ -26,42 +28,129 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   String? _selectedLoungeOwner;
   String? _selectedLounge;
 
-  // Sri Lanka's 25 districts
-  final List<String> _districts = [
-    'Ampara',
-    'Anuradhapura',
-    'Badulla',
-    'Batticaloa',
-    'Colombo',
-    'Galle',
-    'Gampaha',
-    'Hambantota',
-    'Jaffna',
-    'Kalutara',
-    'Kandy',
-    'Kegalle',
-    'Kilinochchi',
-    'Kurunegala',
-    'Mannar',
-    'Matale',
-    'Matara',
-    'Monaragala',
-    'Mullaitivu',
-    'Nuwara Eliya',
-    'Polonnaruwa',
-    'Puttalam',
-    'Ratnapura',
-    'Trincomalee',
-    'Vavuniya',
-  ];
+  late LoungeOwnerRemoteDataSource _loungeOwnerRemoteDataSource;
+  List<Map<String, dynamic>> _districts = [];
+  List<Map<String, dynamic>> _ownersForSelectedDistrict = [];
+  List<Map<String, dynamic>> _loungesForSelection = [];
+  bool _isLoadingDistricts = true;
+  bool _isLoadingOwners = false;
+  bool _isLoadingLounges = false;
+  String? _districtsError;
+  String? _ownersError;
+  String? _loungesError;
 
   @override
   void initState() {
     super.initState();
+    _loungeOwnerRemoteDataSource =
+        InjectionContainer().loungeOwnerRemoteDataSource;
     // Fetch all lounges for staff dropdown when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RoleSelectionProvider>().fetchAllLounges();
+      _loadDistricts();
     });
+  }
+
+  Future<void> _loadDistricts() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingDistricts = true;
+      _districtsError = null;
+    });
+
+    try {
+      final districts = await _loungeOwnerRemoteDataSource.getAllDistricts();
+      if (!mounted) return;
+      setState(() {
+        _districts = districts;
+        _isLoadingDistricts = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _districts = [];
+        _isLoadingDistricts = false;
+        _districtsError = 'Failed to load districts';
+      });
+    }
+  }
+
+  String? _selectedDistrictName() {
+    if (_selectedDistrict == null) return null;
+    for (final district in _districts) {
+      final id = district['id'] as String?;
+      if (id == _selectedDistrict) {
+        return district['district'] as String?;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _loadOwnersForSelectedDistrict(String districtId) async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingOwners = true;
+      _ownersError = null;
+      _ownersForSelectedDistrict = [];
+      _loungesForSelection = [];
+      _selectedLoungeOwner = null;
+      _selectedLounge = null;
+    });
+
+    try {
+      final owners = await _loungeOwnerRemoteDataSource
+          .getApprovedLoungeOwnersByDistrictId(districtId);
+      if (!mounted) return;
+      setState(() {
+        _ownersForSelectedDistrict = owners;
+        _isLoadingOwners = false;
+        _loungesForSelection = [];
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ownersForSelectedDistrict = [];
+        _isLoadingOwners = false;
+        _ownersError = 'Failed to load lounge owners';
+        _loungesForSelection = [];
+      });
+    }
+  }
+
+  Future<void> _loadLoungesForOwnerAndDistrict({
+    required String ownerId,
+    required String districtId,
+  }) async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingLounges = true;
+      _loungesError = null;
+      _loungesForSelection = [];
+      _selectedLounge = null;
+    });
+
+    try {
+      final lounges = await _loungeOwnerRemoteDataSource.getLoungesByOwnerId(
+        ownerId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _loungesForSelection = lounges.where((lounge) {
+          final loungeDistrict = lounge['district']?.toString() ??
+              lounge['district_id']?.toString() ??
+              '';
+          return loungeDistrict == districtId;
+        }).toList();
+        _isLoadingLounges = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loungesForSelection = [];
+        _isLoadingLounges = false;
+        _loungesError = 'Failed to load lounges';
+      });
+    }
   }
 
   @override
@@ -283,93 +372,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
     return Consumer<RoleSelectionProvider>(
       builder: (context, provider, child) {
-        // Lounge owners by district
-        final Map<String, List<String>> loungeOwnersByDistrict = {
-          'Colombo': ['Rashmika Daham', 'Maleesha Fernando', 'Kasun De Silva'],
-          'Gampaha': ['Pradeep Silva', 'Nimal Perera', 'Sunil Bandara'],
-          'Kalutara': ['Lakshman Dias', 'Roshan Jayasinghe'],
-          'Kandy': ['Chaminda Silva', 'Ajith Fernando', 'Kumar Sathya'],
-          'Matale': ['Rajan Murali', 'Selvam Kannan'],
-          'Nuwara Eliya': ['Farook Hassan', 'Nazeer Ahmed'],
-          'Galle': ['Rizan Farook', 'Pradeep Gamage'],
-          'Matara': ['Sanjeewa Liyanage', 'Tharaka Wijesinghe'],
-          'Hambantota': ['Saman Kumara', 'Upul Dissanayake'],
-          'Jaffna': ['Indika Rajapaksa', 'Bandula Weerasinghe'],
-          'Kilinochchi': ['Sudath Ranasinghe'],
-          'Mannar': ['Prasanna Wickrama'],
-          'Vavuniya': ['Rohitha Perera'],
-          'Mullaitivu': ['Nuwan Jayawardena'],
-          'Batticaloa': ['Dilan Wijeratne', 'Kamal Peris'],
-          'Ampara': ['Ajith Gunasekara'],
-          'Trincomalee': ['Ruwan Fernando'],
-          'Kurunegala': ['Mahesh Silva', 'Chathura Perera'],
-          'Puttalam': ['Samantha Jayawardena'],
-          'Anuradhapura': ['Tharindu Wijesinghe', 'Dilshan Kumar'],
-          'Polonnaruwa': ['Janaka Silva'],
-          'Badulla': ['Nishantha Perera', 'Suresh Bandara'],
-          'Monaragala': ['Anil Gunasekara'],
-          'Ratnapura': ['Kapila Silva', 'Lasantha Fernando'],
-          'Kegalle': ['Wijith Perera'],
-        };
-
-        // Hardcoded data as fallback with district mapping
-        final Map<String, List<String>> loungesByDistrict = {
-          'Colombo': [
-            'Colombo Paradise Lounge',
-            'Fort Lounge',
-            'Bambalapitiya Lounge',
-          ],
-          'Gampaha': [
-            'Negombo Beach Lounge',
-            'Gampaha City Lounge',
-            'Ja-Ela Lounge',
-          ],
-          'Kalutara': ['Kalutara Beach Lounge', 'Wadduwa Lounge'],
-          'Kandy': ['Kandy Hill Lounge', 'Peradeniya Lounge', 'Temple Lounge'],
-          'Matale': ['Matale Heritage Lounge', 'Dambulla Lounge'],
-          'Nuwara Eliya': ['Nuwara Eliya Tea Lounge', 'Nanu Oya Lounge'],
-          'Galle': ['Galle Fort Lounge', 'Unawatuna Beach Lounge'],
-          'Matara': ['Matara Beach Lounge', 'Mirissa Lounge'],
-          'Hambantota': ['Hambantota Safari Lounge', 'Tangalle Beach Lounge'],
-          'Jaffna': ['Jaffna Royal Lounge', 'Nallur Lounge'],
-          'Kilinochchi': ['Kilinochchi Central Lounge'],
-          'Mannar': ['Mannar Island Lounge'],
-          'Vavuniya': ['Vavuniya Central Lounge'],
-          'Mullaitivu': ['Mullaitivu Beach Lounge'],
-          'Batticaloa': ['Batticaloa Beach Lounge', 'Kalmunai Lounge'],
-          'Ampara': ['Ampara Town Lounge'],
-          'Trincomalee': ['Trincomalee Bay Lounge', 'Nilaveli Beach Lounge'],
-          'Kurunegala': ['Kurunegala City Lounge', 'Maho Lounge'],
-          'Puttalam': ['Puttalam Coast Lounge', 'Kalpitiya Lounge'],
-          'Anuradhapura': [
-            'Anuradhapura Heritage Lounge',
-            'Sacred City Lounge',
-          ],
-          'Polonnaruwa': ['Polonnaruwa Ancient Lounge', 'Sigiriya Rock Lounge'],
-          'Badulla': ['Badulla Hill Lounge', 'Bandarawela Tea Lounge'],
-          'Monaragala': ['Monaragala Town Lounge'],
-          'Ratnapura': ['Ratnapura Gem Lounge', 'Adam\'s Peak Lounge'],
-          'Kegalle': ['Kegalle Mountain Lounge', 'Kitulgala Lounge'],
-        };
-
-        // Get lounge owners for selected district
-        List<String> availableLoungeOwners = [];
-        if (_selectedDistrict != null) {
-          availableLoungeOwners =
-              loungeOwnersByDistrict[_selectedDistrict!] ?? [];
-        }
-
-        // Get lounges for selected district
-        List<String> availableLounges = [];
-        if (_selectedDistrict != null && _selectedLoungeOwner != null) {
-          // Use hardcoded data mapped by district
-          availableLounges = loungesByDistrict[_selectedDistrict!] ?? [];
-
-          // If we have real data from provider, we could also show those lounges
-          // but since Lounge entity doesn't have district field, we just use hardcoded data
-          // In production, you would filter provider.lounges by matching the district field
-          // or add a district field to the Lounge entity
-        }
+        final selectedDistrictName = _selectedDistrictName();
+        final availableLounges = _loungesForSelection;
 
         return Container(
           width: double.infinity,
@@ -447,43 +451,84 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     ),
                     const SizedBox(width: AppSpacing.small),
                     Expanded(
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          hint: Text(
-                            'Select your district',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          value: _selectedDistrict,
-                          icon: const Icon(
-                            Icons.arrow_forward_ios,
-                            size: 16,
-                            color: AppColors.textSecondary,
-                          ),
-                          items: _districts.map((String district) {
-                            return DropdownMenuItem<String>(
-                              value: district,
-                              child: Text(
-                                district,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.textPrimary,
-                                ),
+                      child: _isLoadingDistricts
+                          ? const Align(
+                              alignment: Alignment.centerLeft,
+                              child: SizedBox(
+                                height: 20,
+                                width: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               ),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _selectedDistrict = newValue;
-                              _selectedLoungeOwner =
-                                  null; // Reset lounge owner when district changes
-                              _selectedLounge =
-                                  null; // Reset lounge selection when district changes
-                            });
-                          },
-                        ),
-                      ),
+                            )
+                          : _districtsError != null
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _districtsError!,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                          color: AppColors.error,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: _loadDistricts,
+                                      child: const Text('Retry'),
+                                    ),
+                                  ],
+                                )
+                              : DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    isExpanded: true,
+                                    hint: Text(
+                                      'Select your district',
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                    value: _selectedDistrict,
+                                    icon: const Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 16,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    items: _districts.map((district) {
+                                      final id =
+                                          district['id'] as String? ?? '';
+                                      final name =
+                                          district['district'] as String? ?? '';
+                                      return DropdownMenuItem<String>(
+                                        value: id,
+                                        child: Text(
+                                          name,
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (String? newValue) async {
+                                      setState(() {
+                                        _selectedDistrict = newValue;
+                                      });
+                                      if (newValue == null ||
+                                          newValue.isEmpty) {
+                                        setState(() {
+                                          _ownersForSelectedDistrict = [];
+                                          _selectedLoungeOwner = null;
+                                          _selectedLounge = null;
+                                        });
+                                        return;
+                                      }
+                                      await _loadOwnersForSelectedDistrict(
+                                          newValue);
+                                    },
+                                  ),
+                                ),
                     ),
                   ],
                 ),
@@ -519,9 +564,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             hint: Text(
                               _selectedDistrict == null
                                   ? 'Select district first'
-                                  : availableLoungeOwners.isEmpty
-                                      ? 'No lounge owners in this district'
-                                      : 'Select lounge owner',
+                                  : _isLoadingOwners
+                                      ? 'Loading lounge owners...'
+                                      : _ownersError != null
+                                          ? _ownersError!
+                                          : _ownersForSelectedDistrict.isEmpty
+                                              ? 'No lounge owners in this district'
+                                              : 'Select lounge owner',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: AppColors.textSecondary,
                               ),
@@ -532,11 +581,18 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               size: 16,
                               color: AppColors.textSecondary,
                             ),
-                            items: availableLoungeOwners.map((String owner) {
+                            items: _ownersForSelectedDistrict.map((owner) {
+                              final ownerId = owner['id'] as String? ?? '';
+                              final ownerName =
+                                  owner['business_name'] as String? ??
+                                      owner['manager_name'] as String? ??
+                                      owner['owner_name'] as String? ??
+                                      owner['name'] as String? ??
+                                      'Unknown';
                               return DropdownMenuItem<String>(
-                                value: owner,
+                                value: ownerId,
                                 child: Text(
-                                  owner,
+                                  ownerName,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: AppColors.textPrimary,
                                   ),
@@ -544,14 +600,28 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               );
                             }).toList(),
                             onChanged: _selectedDistrict == null ||
-                                    availableLoungeOwners.isEmpty
+                                    _isLoadingOwners ||
+                                    _ownersForSelectedDistrict.isEmpty
                                 ? null
-                                : (String? newValue) {
+                                : (String? newValue) async {
                                     setState(() {
                                       _selectedLoungeOwner = newValue;
                                       _selectedLounge =
                                           null; // Reset lounge when owner changes
                                     });
+                                    if (newValue == null ||
+                                        newValue.isEmpty ||
+                                        _selectedDistrict == null ||
+                                        _selectedDistrict!.isEmpty) {
+                                      setState(() {
+                                        _loungesForSelection = [];
+                                      });
+                                      return;
+                                    }
+                                    await _loadLoungesForOwnerAndDistrict(
+                                      ownerId: newValue,
+                                      districtId: _selectedDistrict!,
+                                    );
                                   },
                           ),
                         ),
@@ -595,9 +665,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               _selectedDistrict == null ||
                                       _selectedLoungeOwner == null
                                   ? 'Select lounge owner first'
-                                  : availableLounges.isEmpty
-                                      ? 'No lounges in this district'
-                                      : 'Select your lounge',
+                                  : _isLoadingLounges
+                                      ? 'Loading lounges...'
+                                      : _loungesError != null
+                                          ? _loungesError!
+                                          : availableLounges.isEmpty
+                                              ? 'No lounges in this district'
+                                              : 'Select your lounge',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: AppColors.textSecondary,
                               ),
@@ -608,11 +682,16 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               size: 16,
                               color: AppColors.textSecondary,
                             ),
-                            items: availableLounges.map((String lounge) {
+                            items: availableLounges.map((lounge) {
+                              final loungeId = lounge['id'] as String? ?? '';
+                              final loungeName =
+                                  lounge['lounge_name'] as String? ??
+                                      lounge['name'] as String? ??
+                                      'Unknown Lounge';
                               return DropdownMenuItem<String>(
-                                value: lounge,
+                                value: loungeId,
                                 child: Text(
-                                  lounge,
+                                  loungeName,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: AppColors.textPrimary,
                                   ),
@@ -621,6 +700,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             }).toList(),
                             onChanged: _selectedDistrict == null ||
                                     _selectedLoungeOwner == null ||
+                                    _isLoadingLounges ||
                                     availableLounges.isEmpty
                                 ? null
                                 : (String? newValue) {
@@ -642,7 +722,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.small),
                   child: Text(
-                    '${availableLounges.length} lounge${availableLounges.length == 1 ? '' : 's'} available in $_selectedDistrict',
+                    '${availableLounges.length} lounge${availableLounges.length == 1 ? '' : 's'} available in ${selectedDistrictName ?? 'selected district'}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.success,
                       fontWeight: FontWeight.w500,

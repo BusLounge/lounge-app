@@ -23,7 +23,7 @@ class LoungeOwnerRepositoryImpl implements LoungeOwnerRepository {
     required String managerFullName,
     required String managerNicNumber,
     required String managerEmail,
-    required String district,
+    required String districtId,
   }) async {
     try {
       await remoteDataSource.saveBusinessInfo(
@@ -32,7 +32,7 @@ class LoungeOwnerRepositoryImpl implements LoungeOwnerRepository {
         managerFullName: managerFullName,
         managerNicNumber: managerNicNumber,
         managerEmail: managerEmail,
-        district: district,
+        districtId: districtId,
       );
       return const Right(null);
     } on ServerException catch (e) {
@@ -135,7 +135,7 @@ class LoungeOwnerRepositoryImpl implements LoungeOwnerRepository {
     String? managerFullName,
     String? managerNicNumber,
     String? managerEmail,
-    String? district,
+    String? districtId,
   }) async {
     try {
       final json = await remoteDataSource.updateProfile(
@@ -144,7 +144,7 @@ class LoungeOwnerRepositoryImpl implements LoungeOwnerRepository {
         managerFullName: managerFullName,
         managerNicNumber: managerNicNumber,
         managerEmail: managerEmail,
-        district: district,
+        districtId: districtId,
       );
       final profile = LoungeOwnerModel.fromJson(json);
       return Right(profile);

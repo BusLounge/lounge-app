@@ -11,6 +11,7 @@ import '../../presentation/widgets/location_picker_widget.dart';
 import '../../domain/entities/lounge.dart';
 import '../../domain/entities/lounge_route.dart';
 import '../../core/di/injection_container.dart';
+import '../../data/datasources/lounge_owner_remote_datasource.dart';
 import '../../data/datasources/route_remote_datasource.dart';
 import '../../data/models/route_model.dart';
 
@@ -45,6 +46,7 @@ class _LoungeOwnerRegistrationScreenState
   // Step 1 fields - Business & Manager Info
   final _businessNameController = TextEditingController();
   final _businessLicenseController = TextEditingController();
+  final _businessAddressController = TextEditingController();
   final _managerFullNameController = TextEditingController();
   final _managerNicNumberController = TextEditingController();
   final _managerEmailController = TextEditingController();
@@ -65,8 +67,13 @@ class _LoungeOwnerRegistrationScreenState
   double? _selectedLatitude;
   double? _selectedLongitude;
   String? _selectedAddress;
-  String? _selectedDistrict;
+  String? _selectedDistrictId;
   final List<String> _selectedAmenities = [];
+
+  late LoungeOwnerRemoteDataSource _loungeOwnerRemoteDataSource;
+  List<Map<String, dynamic>> _districts = [];
+  bool _isLoadingDistricts = true;
+  String? _districtsError;
 
   // Route selection
   bool _loadingRoutes = false;
@@ -77,6 +84,7 @@ class _LoungeOwnerRegistrationScreenState
   void dispose() {
     _businessNameController.dispose();
     _businessLicenseController.dispose();
+    _businessAddressController.dispose();
     _managerFullNameController.dispose();
     _managerNicNumberController.dispose();
     _managerEmailController.dispose();
@@ -97,7 +105,133 @@ class _LoungeOwnerRegistrationScreenState
   @override
   void initState() {
     super.initState();
+    _loungeOwnerRemoteDataSource =
+        InjectionContainer().loungeOwnerRemoteDataSource;
+    _loadDistricts();
     // Don't load routes on init - load only when user searches
+  }
+
+  Future<void> _loadDistricts() async {
+    setState(() {
+      _isLoadingDistricts = true;
+      _districtsError = null;
+    });
+
+    try {
+      final districts = await _loungeOwnerRemoteDataSource.getAllDistricts();
+      if (!mounted) return;
+      setState(() {
+        _districts = districts;
+        _isLoadingDistricts = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _districts = [];
+        _isLoadingDistricts = false;
+        _districtsError = 'Failed to load districts';
+      });
+    }
+  }
+
+  String? _selectedDistrictName() {
+    if (_selectedDistrictId == null || _selectedDistrictId!.isEmpty) {
+      return null;
+    }
+
+    for (final district in _districts) {
+      if (district['id'] == _selectedDistrictId) {
+        final name = district['district']?.toString().trim();
+        if (name != null && name.isNotEmpty) {
+          return name;
+        }
+      }
+    }
+
+    return _selectedDistrictId;
+  }
+
+  Widget _buildDistrictSelector() {
+    if (_isLoadingDistricts) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Loading districts...'),
+          ],
+        ),
+      );
+    }
+
+    if (_districtsError != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.08),
+          border: Border.all(color: Colors.red.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _districtsError!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+            TextButton(
+              onPressed: _loadDistricts,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return DropdownButtonFormField<String>(
+      value: _selectedDistrictId,
+      decoration: InputDecoration(
+        labelText: 'District *',
+        hintText: 'Select your district',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        prefixIcon: const Icon(Icons.location_city),
+      ),
+      items: _districts.map((district) {
+        final id = district['id'] as String? ?? '';
+        final name = district['district'] as String? ?? '';
+        return DropdownMenuItem<String>(
+          value: id,
+          child: Text(name),
+        );
+      }).toList(),
+      onChanged: (value) {
+        setState(() {
+          _selectedDistrictId = value;
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please select a district';
+        }
+        return null;
+      },
+    );
   }
 
   @override
@@ -315,7 +449,7 @@ class _LoungeOwnerRegistrationScreenState
             'Manager Name: ${registrationProvider.managerFullName ?? 'N/A'}',
             'Manager NIC: ${registrationProvider.managerNicNumber ?? 'N/A'}',
             'Manager Email: ${registrationProvider.managerEmail?.isNotEmpty == true ? registrationProvider.managerEmail : 'N/A'}',
-            'District: ${_selectedDistrict ?? 'N/A'}',
+            'District: ${_selectedDistrictName() ?? 'N/A'}',
           ],
         ),
         const SizedBox(height: 20),
@@ -455,60 +589,7 @@ class _LoungeOwnerRegistrationScreenState
             },
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _selectedDistrict,
-            decoration: InputDecoration(
-              labelText: 'District *',
-              hintText: 'Select your district',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              prefixIcon: const Icon(Icons.location_city),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'Ampara', child: Text('Ampara')),
-              DropdownMenuItem(
-                  value: 'Anuradhapura', child: Text('Anuradhapura')),
-              DropdownMenuItem(value: 'Badulla', child: Text('Badulla')),
-              DropdownMenuItem(value: 'Batticaloa', child: Text('Batticaloa')),
-              DropdownMenuItem(value: 'Colombo', child: Text('Colombo')),
-              DropdownMenuItem(value: 'Galle', child: Text('Galle')),
-              DropdownMenuItem(value: 'Gampaha', child: Text('Gampaha')),
-              DropdownMenuItem(value: 'Hambantota', child: Text('Hambantota')),
-              DropdownMenuItem(value: 'Jaffna', child: Text('Jaffna')),
-              DropdownMenuItem(value: 'Kalutara', child: Text('Kalutara')),
-              DropdownMenuItem(value: 'Kandy', child: Text('Kandy')),
-              DropdownMenuItem(value: 'Kegalle', child: Text('Kegalle')),
-              DropdownMenuItem(
-                  value: 'Kilinochchi', child: Text('Kilinochchi')),
-              DropdownMenuItem(value: 'Kurunegala', child: Text('Kurunegala')),
-              DropdownMenuItem(value: 'Mannar', child: Text('Mannar')),
-              DropdownMenuItem(value: 'Matale', child: Text('Matale')),
-              DropdownMenuItem(value: 'Matara', child: Text('Matara')),
-              DropdownMenuItem(value: 'Monaragala', child: Text('Monaragala')),
-              DropdownMenuItem(value: 'Mullaitivu', child: Text('Mullaitivu')),
-              DropdownMenuItem(
-                  value: 'Nuwara Eliya', child: Text('Nuwara Eliya')),
-              DropdownMenuItem(
-                  value: 'Polonnaruwa', child: Text('Polonnaruwa')),
-              DropdownMenuItem(value: 'Puttalam', child: Text('Puttalam')),
-              DropdownMenuItem(value: 'Ratnapura', child: Text('Ratnapura')),
-              DropdownMenuItem(
-                  value: 'Trincomalee', child: Text('Trincomalee')),
-              DropdownMenuItem(value: 'Vavuniya', child: Text('Vavuniya')),
-            ],
-            onChanged: (value) {
-              setState(() {
-                _selectedDistrict = value;
-              });
-            },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please select a district';
-              }
-              return null;
-            },
-          ),
+          _buildDistrictSelector(),
         ],
       ),
     );
@@ -695,60 +776,7 @@ class _LoungeOwnerRegistrationScreenState
           const SizedBox(height: 16),
 
           // District Dropdown
-          DropdownButtonFormField<String>(
-            value: _selectedDistrict,
-            decoration: InputDecoration(
-              labelText: 'District *',
-              hintText: 'Select your district',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              prefixIcon: const Icon(Icons.location_city),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'Ampara', child: Text('Ampara')),
-              DropdownMenuItem(
-                  value: 'Anuradhapura', child: Text('Anuradhapura')),
-              DropdownMenuItem(value: 'Badulla', child: Text('Badulla')),
-              DropdownMenuItem(value: 'Batticaloa', child: Text('Batticaloa')),
-              DropdownMenuItem(value: 'Colombo', child: Text('Colombo')),
-              DropdownMenuItem(value: 'Galle', child: Text('Galle')),
-              DropdownMenuItem(value: 'Gampaha', child: Text('Gampaha')),
-              DropdownMenuItem(value: 'Hambantota', child: Text('Hambantota')),
-              DropdownMenuItem(value: 'Jaffna', child: Text('Jaffna')),
-              DropdownMenuItem(value: 'Kalutara', child: Text('Kalutara')),
-              DropdownMenuItem(value: 'Kandy', child: Text('Kandy')),
-              DropdownMenuItem(value: 'Kegalle', child: Text('Kegalle')),
-              DropdownMenuItem(
-                  value: 'Kilinochchi', child: Text('Kilinochchi')),
-              DropdownMenuItem(value: 'Kurunegala', child: Text('Kurunegala')),
-              DropdownMenuItem(value: 'Mannar', child: Text('Mannar')),
-              DropdownMenuItem(value: 'Matale', child: Text('Matale')),
-              DropdownMenuItem(value: 'Matara', child: Text('Matara')),
-              DropdownMenuItem(value: 'Monaragala', child: Text('Monaragala')),
-              DropdownMenuItem(value: 'Mullaitivu', child: Text('Mullaitivu')),
-              DropdownMenuItem(
-                  value: 'Nuwara Eliya', child: Text('Nuwara Eliya')),
-              DropdownMenuItem(
-                  value: 'Polonnaruwa', child: Text('Polonnaruwa')),
-              DropdownMenuItem(value: 'Puttalam', child: Text('Puttalam')),
-              DropdownMenuItem(value: 'Ratnapura', child: Text('Ratnapura')),
-              DropdownMenuItem(
-                  value: 'Trincomalee', child: Text('Trincomalee')),
-              DropdownMenuItem(value: 'Vavuniya', child: Text('Vavuniya')),
-            ],
-            onChanged: (value) {
-              setState(() {
-                _selectedDistrict = value;
-              });
-            },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please select a district';
-              }
-              return null;
-            },
-          ),
+          _buildDistrictSelector(),
           const SizedBox(height: 16),
 
           // Google Maps Location Picker
@@ -1467,12 +1495,15 @@ class _LoungeOwnerRegistrationScreenState
     registrationProvider.saveBusinessInfoData(
       businessName: _businessNameController.text.trim(),
       businessLicense: _businessLicenseController.text.trim(),
+      businessAddress: _businessAddressController.text.trim().isEmpty
+          ? null
+          : _businessAddressController.text.trim(),
       managerFullName: _managerFullNameController.text.trim(),
       managerNicNumber: _managerNicNumberController.text.trim(),
       managerEmail: _managerEmailController.text.trim(),
     );
 
-    final district = _selectedDistrict;
+    final district = _selectedDistrictId;
     if (district == null || district.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1498,7 +1529,7 @@ class _LoungeOwnerRegistrationScreenState
       listen: false,
     );
 
-    final district = _selectedDistrict;
+    final district = _selectedDistrictId;
     if (district == null || district.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1517,7 +1548,7 @@ class _LoungeOwnerRegistrationScreenState
       managerFullName: registrationProvider.managerFullName ?? '',
       managerNicNumber: registrationProvider.managerNicNumber ?? '',
       managerEmail: registrationProvider.managerEmail ?? '',
-      district: district,
+      districtId: district,
     );
 
     if (success) {
@@ -1619,7 +1650,7 @@ class _LoungeOwnerRegistrationScreenState
       postalCode: _postalCodeController.text.trim().isEmpty
           ? null
           : _postalCodeController.text.trim(),
-      district: _selectedDistrict,
+      district: _selectedDistrictId,
       latitude: _selectedLatitude!,
       longitude: _selectedLongitude!,
       contactPhone: _contactPhoneController.text.trim(),
@@ -1671,7 +1702,7 @@ class _LoungeOwnerRegistrationScreenState
         managerFullName: registrationProvider.managerFullName ?? '',
         managerNicNumber: registrationProvider.managerNicNumber ?? '',
         managerEmail: registrationProvider.managerEmail ?? '',
-        district: registrationProvider.district ?? '',
+        districtId: registrationProvider.district ?? '',
       );
 
       if (!businessInfoSuccess) {

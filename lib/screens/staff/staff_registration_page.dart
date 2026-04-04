@@ -224,15 +224,17 @@ class _StaffRegistrationPageState extends State<StaffRegistrationPage> {
       return;
     }
 
-    // Get the lounge ID by searching for the lounge with matching name
-    // Using the RoleSelectionProvider which has fetched all lounges
+    // Resolve selected lounge from role selection.
+    // New flow passes lounge ID, old flow may pass lounge name.
     final roleSelectionProvider =
         Provider.of<RoleSelectionProvider>(context, listen: false);
 
     String? loungeId;
     try {
+      final selectedValue = widget.selectedLounge!;
       final matchingLounge = roleSelectionProvider.lounges.firstWhere(
-        (lounge) => lounge.loungeName == widget.selectedLounge,
+        (lounge) =>
+            lounge.id == selectedValue || lounge.loungeName == selectedValue,
       );
       loungeId = matchingLounge.id;
     } catch (e) {

@@ -75,12 +75,22 @@ class LoungeOwnerModel extends LoungeOwner {
             ),
       ),
       district: _parseDistrict(
-        json['district'] ??
+        json['district_id'] ??
+            json['district'] ??
             businessMap?['district'] ??
+            businessMap?['district_id'] ??
             managerMap?['district'] ??
+            managerMap?['district_id'] ??
             _findDeepValue(
               json,
-              const {'district', 'businessdistrict', 'ownerdistrict'},
+              const {
+                'district',
+                'districtid',
+                'businessdistrict',
+                'businessdistrictid',
+                'ownerdistrict',
+                'ownerdistrictid',
+              },
             ),
       ),
       registrationStep:
@@ -127,7 +137,7 @@ class LoungeOwnerModel extends LoungeOwner {
       'manager_full_name': managerFullName,
       'manager_nic_number': managerNicNumber,
       'manager_email': managerEmail,
-      'district': district,
+      'district_id': district,
       'registration_step': registrationStep,
       'profile_completed': profileCompleted,
       'verification_status': verificationStatus,
