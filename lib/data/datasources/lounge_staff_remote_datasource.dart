@@ -28,7 +28,7 @@ abstract class LoungeStaffRemoteDataSource {
   });
 
   /// Get staff filtered by approval status
-  /// GET /api/v1/lounges/:lounge_id/staff/approval-filter
+  /// GET /api/v1/lounges/:lounge_id/staff?approval_status=<status>
   Future<List<LoungeStaffModel>> getStaffByApprovalStatus({
     required String loungeId,
     required String approvalStatus,
@@ -234,7 +234,7 @@ class LoungeStaffRemoteDataSourceImpl implements LoungeStaffRemoteDataSource {
   }) async {
     try {
       final response = await _loungeDio.get(
-        '/api/v1/lounges/$loungeId/staff/approval-filter',
+        '/api/v1/lounges/$loungeId/staff',
         queryParameters: {'approval_status': approvalStatus},
       );
 

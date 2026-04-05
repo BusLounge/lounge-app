@@ -105,8 +105,10 @@ class _StaffOtpRegistrationScreenState
     // Initialize the datasource
     final di = InjectionContainer();
     _loungeOwnerDataSource = di.loungeOwnerRemoteDataSource;
-    Provider.of<AuthProvider>(context, listen: false)
-        .setSelectedRole('lounge_staff');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AuthProvider>().setSelectedRole('lounge_staff');
+    });
     _loadDistricts();
   }
 

@@ -1,15 +1,10 @@
 class ApiConfig {
   // ============================================
-  // LOCAL BACKEND CONFIGURATION
+  // BACKEND CONFIGURATION
   // ============================================
-  // All endpoints now point to local backend server
-
-  // LOCAL BACKEND - For All APIs
-  // IMPORTANT: Change this based on your setup:
-  // Android Emulator: http://10.0.2.2:8080
-  // iOS Simulator: http://localhost:8080
-  // Physical Device/Mac: http://localhost:8080 or your machine's IP (e.g., http://192.168.x.x:8080)
-  static const String localBaseUrl = 'http://10.0.2.2:8080';
+  // All requests should use the deployed backend.
+  static const String localBaseUrl =
+      'https://6ed89a53-55ef-45f1-a497-e383bfedea00-dev.e1-us-east-azure.choreoapis.dev/default/backendloungeowner/v1.0';
 
   // Kept for backward compatibility
   static const String choreoBaseUrl = localBaseUrl;
