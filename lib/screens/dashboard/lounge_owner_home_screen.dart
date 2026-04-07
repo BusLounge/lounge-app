@@ -140,6 +140,35 @@ class _LoungeOwnerHomeScreenState extends State<LoungeOwnerHomeScreen> {
     ).pushNamedAndRemoveUntil(AppConstants.phoneInputRoute, (route) => false);
   }
 
+  Future<void> _confirmAndLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.textLight,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await _logout();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const bg = Color(0xFFFFFBF5);
@@ -165,7 +194,7 @@ class _LoungeOwnerHomeScreenState extends State<LoungeOwnerHomeScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.logout, color: Colors.black87),
-                onPressed: _logout,
+                onPressed: _confirmAndLogout,
                 tooltip: 'Logout',
               ),
             ],

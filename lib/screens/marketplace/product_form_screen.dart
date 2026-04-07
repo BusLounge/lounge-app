@@ -153,7 +153,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               // Pricing Section
               _buildSectionTitle('Pricing'),
               const SizedBox(height: AppSpacing.medium),
-              _buildPriceRateTypeDropdown(enabled: _isServicesCategory()),
+              _buildPriceRateTypeDropdown(enabled: _isServiceLikeCategory()),
               const SizedBox(height: AppSpacing.medium),
               Row(
                 children: [
@@ -168,7 +168,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               // Availability Section
               _buildSectionTitle('Availability'),
               const SizedBox(height: AppSpacing.medium),
-              if (!_isServicesCategory()) ...[
+              if (!_isServiceLikeCategory()) ...[
                 _buildStockStatusDropdown(),
                 const SizedBox(height: AppSpacing.medium),
               ],
@@ -178,7 +178,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 value: _isAvailable,
                 onChanged: (value) => setState(() => _isAvailable = value),
               ),
-              if (!_isServicesCategory())
+              if (!_isServiceLikeCategory())
                 _buildSwitchTile(
                   title: 'Pre-orderable',
                   subtitle: 'Can be pre-ordered before travel',
@@ -189,7 +189,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               const SizedBox(height: AppSpacing.large),
 
               // Dietary Information Section
-              if (!_isServicesCategory()) ...[
+              if (!_isServiceLikeCategory()) ...[
                 _buildSectionTitle('Dietary Information'),
                 const SizedBox(height: AppSpacing.medium),
                 _buildDietaryChips(),
@@ -424,7 +424,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 orElse: () => categories.first,
               );
 
-              if (_isServicesCategoryName(selectedCategory.name)) {
+              if (_isServiceLikeCategoryName(selectedCategory.name)) {
                 _productType = ProductType.service;
               } else {
                 _selectedPriceRateType = 'fixed';
@@ -450,8 +450,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   Widget _buildProductTypeDropdown() {
+    final isServiceLikeCategory = _isServiceLikeCategory();
+
     return DropdownButtonFormField<ProductType>(
-      value: _productType,
+      value: isServiceLikeCategory ? ProductType.service : _productType,
       decoration: const InputDecoration(labelText: 'Product Type'),
       items: ProductType.values.map((type) {
         return DropdownMenuItem<ProductType>(
@@ -459,13 +461,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           child: Text(_getProductTypeName(type)),
         );
       }).toList(),
-      onChanged: (value) {
-        if (value != null) {
-          setState(() {
-            _productType = value;
-          });
-        }
-      },
+      onChanged: isServiceLikeCategory
+          ? null
+          : (value) {
+              if (value != null) {
+                setState(() {
+                  _productType = value;
+                });
+              }
+            },
     );
   }
 
@@ -509,7 +513,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       value: _selectedPriceRateType,
       decoration: InputDecoration(
         labelText: 'Price Rate Type *',
-        helperText: enabled ? null : 'Only enabled when category is Services',
+        helperText: enabled
+            ? null
+            : 'Only enabled when category is Services or Electronics',
       ),
       items: const [
         DropdownMenuItem(value: 'hourly', child: Text('Hourly')),
@@ -537,7 +543,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     );
   }
 
-  bool _isServicesCategory() {
+  bool _isServiceLikeCategory() {
     final categoryId = _selectedCategoryId;
     if (categoryId == null || categoryId.isEmpty) {
       return false;
@@ -550,12 +556,17 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       return false;
     }
 
-    return _isServicesCategoryName(matchedCategory.first.name);
+    return _isServiceLikeCategoryName(matchedCategory.first.name);
   }
 
-  bool _isServicesCategoryName(String categoryName) {
+  bool _isServiceLikeCategoryName(String categoryName) {
     final normalizedName = categoryName.trim().toLowerCase();
-    return normalizedName == 'service' || normalizedName == 'services';
+    return normalizedName == 'service' ||
+        normalizedName == 'services' ||
+        normalizedName == 'electronic item' ||
+        normalizedName == 'electronic items' ||
+        normalizedName == 'electronics' ||
+        normalizedName == 'electronic';
   }
 
   String _toUiPriceRateType(String? backendValue) {
@@ -774,7 +785,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         imageUrl = await _uploadImage();
       }
 
-      final isServicesCategory = _isServicesCategory();
+      final isServiceLikeCategory = _isServiceLikeCategory();
 
       final product = LoungeProduct(
         id: widget.product?.id ?? const Uuid().v4(),
@@ -784,9 +795,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        productType: isServicesCategory ? ProductType.service : _productType,
+        productType: isServiceLikeCategory ? ProductType.service : _productType,
         price: _priceController.text.trim(),
-        priceRateType: isServicesCategory
+        priceRateType: isServiceLikeCategory
             ? _toBackendPriceRateType(_selectedPriceRateType)
             : 'fixed_rate',
         discountedPrice: _discountedPriceController.text.trim().isEmpty
@@ -795,10 +806,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         imageUrl: imageUrl,
         stockStatus: _stockStatus,
         isAvailable: _isAvailable,
-        isPreOrderable: isServicesCategory ? false : _isPreOrderable,
-        isVegetarian: isServicesCategory ? false : _isVegetarian,
-        isVegan: isServicesCategory ? false : _isVegan,
-        isHalal: isServicesCategory ? false : _isHalal,
+        isPreOrderable: isServiceLikeCategory ? false : _isPreOrderable,
+        isVegetarian: isServiceLikeCategory ? false : _isVegetarian,
+        isVegan: isServiceLikeCategory ? false : _isVegan,
+        isHalal: isServiceLikeCategory ? false : _isHalal,
         displayOrder: int.tryParse(_displayOrderController.text) ?? 0,
         isFeatured: _isFeatured,
         createdAt: widget.product?.createdAt ?? DateTime.now(),

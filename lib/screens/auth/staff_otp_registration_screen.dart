@@ -97,7 +97,18 @@ class _StaffOtpRegistrationScreenState
   bool _isLoadingLounges = false;
   bool _isSubmitting = false;
   String? _ownersError;
+  bool _showNetworkDelayMessage = false;
+  static const String _otpNetworkDelayMessage =
+      'Network Delay Detected. OTP may still arrive. Please wait or retry.';
   late LoungeOwnerRemoteDataSource _loungeOwnerDataSource;
+
+  bool _isTimeoutLikeOtpFailure(String? message) {
+    final normalized = (message ?? '').toLowerCase();
+    return normalized.contains('timeout') ||
+        normalized.contains('timed out') ||
+        normalized.contains('time out') ||
+        normalized.contains('deadline exceeded');
+  }
 
   @override
   void initState() {
@@ -268,6 +279,9 @@ class _StaffOtpRegistrationScreenState
     });
 
     if (success) {
+      setState(() {
+        _showNetworkDelayMessage = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('OTP sent to your phone. Please check your messages.'),
@@ -289,9 +303,20 @@ class _StaffOtpRegistrationScreenState
         ),
       );
     } else {
+      final errorMessage = authProvider.error ?? 'Failed to send OTP';
+      if (_isTimeoutLikeOtpFailure(errorMessage)) {
+        setState(() {
+          _showNetworkDelayMessage = true;
+        });
+        return;
+      }
+
+      setState(() {
+        _showNetworkDelayMessage = false;
+      });
       ErrorDialog.show(
         context: context,
-        message: authProvider.error ?? 'Failed to send OTP',
+        message: errorMessage,
         onRetry: _sendOtp,
       );
     }
@@ -323,6 +348,61 @@ class _StaffOtpRegistrationScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_showNetworkDelayMessage) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFF6E5), Color(0xFFFFE8BF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFF3B24B)),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x1A000000),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.network_check_rounded,
+                            color: Color(0xFF7A4A00),
+                            size: 22,
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              _otpNetworkDelayMessage,
+                              style: TextStyle(
+                                color: Color(0xFF5D3900),
+                                fontWeight: FontWeight.w600,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _showNetworkDelayMessage = false;
+                              });
+                            },
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFF7A4A00),
+                            ),
+                            tooltip: 'Dismiss',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   // Header
                   const SizedBox(height: 8),
                   Text(

@@ -39,6 +39,43 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
   String _completePhoneNumber = '';
   bool _isValid = false;
 
+  static const String _otpNetworkDelayMessage =
+      'Network Delay Detected. OTP may still arrive. Please wait or retry.';
+
+  bool _isTimeoutLikeOtpFailure(String? message) {
+    final normalized = (message ?? '').toLowerCase();
+    return normalized.contains('timeout') ||
+        normalized.contains('timed out') ||
+        normalized.contains('time out') ||
+        normalized.contains('deadline exceeded');
+  }
+
+  void _showNetworkDelayNotice() {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(AppSpacing.medium),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: const Color(0xFF7A4A00),
+        content: Row(
+          children: const [
+            Icon(Icons.wifi_tethering_error_rounded, color: Colors.white),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _otpNetworkDelayMessage,
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _phoneController.dispose();
@@ -85,9 +122,15 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
         },
       );
     } else {
+      final errorMessage = authProvider.error ?? 'Failed to send OTP';
+      if (_isTimeoutLikeOtpFailure(errorMessage)) {
+        _showNetworkDelayNotice();
+        return;
+      }
+
       ErrorDialog.show(
         context: context,
-        message: authProvider.error ?? 'Failed to send OTP',
+        message: errorMessage,
         onRetry: _sendOtp,
       );
     }
