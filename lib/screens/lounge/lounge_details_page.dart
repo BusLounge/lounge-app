@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme_config.dart';
+import '../../core/di/injection_container.dart';
+import '../../data/datasources/route_remote_datasource.dart';
+import '../../data/models/route_model.dart';
 import '../../domain/entities/lounge.dart';
 import '../../presentation/providers/registration_provider.dart';
 import 'edit_lounge_details_page.dart';
@@ -16,12 +19,21 @@ class LoungeDetailsPage extends StatefulWidget {
 
 class _LoungeDetailsPageState extends State<LoungeDetailsPage> {
   late Lounge _lounge;
+  late RouteRemoteDataSource _routeRemoteDataSource;
+  List<MasterRoute> _masterRoutes = [];
+  final Map<String, List<MasterRouteStop>> _routeStopsByRouteId = {};
 
   @override
   void initState() {
     super.initState();
     _lounge = widget.lounge;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLounge());
+    _routeRemoteDataSource = RouteRemoteDataSource(
+      apiClient: InjectionContainer().apiClient,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _refreshLounge();
+      await _loadRouteMetadata();
+    });
   }
 
   Future<void> _refreshLounge() async {
@@ -34,6 +46,65 @@ class _LoungeDetailsPageState extends State<LoungeDetailsPage> {
     setState(() {
       _lounge = lounge;
     });
+  }
+
+  Future<void> _loadRouteMetadata() async {
+    final loungeRoutes = _lounge.routes ?? const [];
+    if (loungeRoutes.isEmpty) return;
+
+    try {
+      final routes = await _routeRemoteDataSource.getMasterRoutes();
+      if (!mounted) return;
+
+      _masterRoutes = routes;
+
+      final routeIds = loungeRoutes.map((r) => r.masterRouteId).toSet();
+      for (final routeId in routeIds) {
+        if (_routeStopsByRouteId.containsKey(routeId)) continue;
+        try {
+          _routeStopsByRouteId[routeId] =
+              await _routeRemoteDataSource.getRouteStops(routeId);
+        } catch (_) {
+          _routeStopsByRouteId[routeId] = const [];
+        }
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (_) {
+      // Keep UI usable even if route metadata fetch fails.
+    }
+  }
+
+  MasterRoute? _masterRouteForId(String routeId) {
+    try {
+      return _masterRoutes.firstWhere((route) => route.id == routeId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _routeLabel(String routeId) {
+    final route = _masterRouteForId(routeId);
+    if (route == null) return 'Route details unavailable';
+    return '${route.routeNumber}: ${route.routeName} (${route.routeDisplay})';
+  }
+
+  String _stopLabel(String routeId, String stopId) {
+    final cachedStops = _routeStopsByRouteId[routeId] ?? const [];
+    for (final stop in cachedStops) {
+      if (stop.id == stopId) return stop.stopName;
+    }
+
+    final route = _masterRouteForId(routeId);
+    if (route != null) {
+      for (final stop in route.stops) {
+        if (stop.id == stopId) return stop.stopName;
+      }
+    }
+
+    return 'Unknown stop';
   }
 
   Future<void> _openEditPage() async {
@@ -204,7 +275,9 @@ class _LoungeDetailsPageState extends State<LoungeDetailsPage> {
                   ),
                   _buildInfoRow(
                     'Country',
-                    _lounge.country ?? 'Not provided',
+                    (_lounge.country == null || _lounge.country!.trim().isEmpty)
+                        ? 'Sri Lanka'
+                        : _lounge.country!,
                     Icons.public,
                   ),
                   _buildInfoRow(
@@ -469,9 +542,10 @@ class _LoungeDetailsPageState extends State<LoungeDetailsPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text('Master Route ID: ${entry.value.masterRouteId}'),
-                      Text('Stop Before ID: ${entry.value.stopBeforeId}'),
-                      Text('Stop After ID: ${entry.value.stopAfterId}'),
+                      Text(_routeLabel(entry.value.masterRouteId)),
+                      Text(
+                        'Between: ${_stopLabel(entry.value.masterRouteId, entry.value.stopBeforeId)} -> ${_stopLabel(entry.value.masterRouteId, entry.value.stopAfterId)}',
+                      ),
                     ],
                   ),
                 ),

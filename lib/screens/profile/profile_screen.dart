@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme_config.dart';
+import '../../core/di/injection_container.dart';
+import '../../data/datasources/lounge_owner_remote_datasource.dart';
+import '../../domain/entities/lounge_owner.dart';
 import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/providers/lounge_owner_provider.dart';
 import '../../widgets/owner_bottom_nav_bar.dart';
@@ -13,16 +16,69 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  late LoungeOwnerRemoteDataSource _loungeOwnerRemoteDataSource;
+  final Map<String, String> _districtNamesById = {};
+
   @override
   void initState() {
     super.initState();
+    _loungeOwnerRemoteDataSource =
+        InjectionContainer().loungeOwnerRemoteDataSource;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Provider.of<LoungeOwnerProvider>(
         context,
         listen: false,
       ).getLoungeOwnerProfile();
+      _loadDistricts();
     });
+  }
+
+  Future<void> _loadDistricts() async {
+    try {
+      final districts = await _loungeOwnerRemoteDataSource.getAllDistricts();
+      if (!mounted) return;
+
+      setState(() {
+        _districtNamesById
+          ..clear()
+          ..addEntries(
+            districts.map((district) {
+              final id = district['id']?.toString() ?? '';
+              final name = district['district']?.toString() ?? '';
+              return MapEntry(id, name);
+            }).where((entry) =>
+                entry.key.isNotEmpty && entry.value.trim().isNotEmpty),
+          );
+      });
+    } catch (_) {
+      // Keep profile usable even when district lookup fails.
+    }
+  }
+
+  bool _looksLikeUuid(String value) {
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+    );
+    return uuidRegex.hasMatch(value.trim());
+  }
+
+  String _resolveDistrictDisplay(LoungeOwner? loungeOwner) {
+    final rawDistrict = loungeOwner?.district?.trim();
+    if (rawDistrict == null || rawDistrict.isEmpty) {
+      return 'Not provided';
+    }
+
+    final mappedName = _districtNamesById[rawDistrict];
+    if (mappedName != null && mappedName.trim().isNotEmpty) {
+      return mappedName;
+    }
+
+    if (_looksLikeUuid(rawDistrict)) {
+      return 'Unknown district';
+    }
+
+    return rawDistrict;
   }
 
   bool _hasValue(String? value) => value != null && value.trim().isNotEmpty;
@@ -198,9 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       _buildInfoRow(
                         'District',
-                        _hasValue(loungeOwner?.district)
-                            ? loungeOwner!.district!
-                            : 'Not provided',
+                        _resolveDistrictDisplay(loungeOwner),
                         Icons.location_on,
                       ),
                     ],

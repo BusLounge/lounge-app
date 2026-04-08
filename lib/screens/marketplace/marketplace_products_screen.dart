@@ -432,6 +432,9 @@ class _MarketplaceProductsScreenState extends State<MarketplaceProductsScreen> {
       case ProductType.service:
         icon = Icons.room_service;
         break;
+      case ProductType.other:
+        icon = Icons.devices_other;
+        break;
       case ProductType.combo:
         icon = Icons.inventory_2;
         break;
@@ -450,6 +453,10 @@ class _MarketplaceProductsScreenState extends State<MarketplaceProductsScreen> {
       case ProductType.service:
         color = AppColors.secondary;
         label = 'Service';
+        break;
+      case ProductType.other:
+        color = const Color(0xFF546E7A);
+        label = 'Other';
         break;
       case ProductType.combo:
         color = AppColors.accent;

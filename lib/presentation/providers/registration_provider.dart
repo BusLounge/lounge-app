@@ -423,8 +423,11 @@ class RegistrationProvider with ChangeNotifier {
     result.fold(
       (failure) {
         print('❌ Provider - loadMyLounges failed: ${failure.message}');
+        print('⚠️ Clearing cached lounges to avoid showing stale data');
         _isLoading = false;
         _errorMessage = failure.message;
+        _myLounges = [];
+        _activeLoungeId = null;
         notifyListeners();
       },
       (lounges) {

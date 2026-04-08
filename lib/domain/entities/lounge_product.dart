@@ -51,6 +51,7 @@ enum ProductStockStatus {
 enum ProductType {
   product,
   service,
+  other,
   combo;
 
   String get value {
@@ -59,6 +60,8 @@ enum ProductType {
         return 'product';
       case ProductType.service:
         return 'service';
+      case ProductType.other:
+        return 'other';
       case ProductType.combo:
         return 'combo';
     }
@@ -68,6 +71,8 @@ enum ProductType {
     switch (value) {
       case 'service':
         return ProductType.service;
+      case 'other':
+        return ProductType.other;
       case 'combo':
         return ProductType.combo;
       default:
@@ -81,6 +86,8 @@ enum ProductType {
         return 'Product';
       case ProductType.service:
         return 'Service';
+      case ProductType.other:
+        return 'Other';
       case ProductType.combo:
         return 'Combo/Package';
     }

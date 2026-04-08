@@ -47,6 +47,7 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
   late SupabaseStorageService _supabaseStorageService;
   List<Map<String, dynamic>> _districts = [];
   List<MasterRoute> _masterRoutes = [];
+  final Map<String, List<MasterRouteStop>> _routeStopsByRouteId = {};
   String? _selectedDistrictId;
   bool _isLoadingDistricts = false;
   String? _districtsError;
@@ -82,6 +83,7 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
           _populateForm(_selectedLounge!);
           _isLoadingLounge = false;
         });
+        await _hydrateSelectedRouteNames();
       } else {
         setState(() {
           _isLoadingLounge = false;
@@ -222,19 +224,18 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
             'stopBeforeId': route.stopBeforeId,
             'stopAfterId': route.stopAfterId,
             'routeNumber':
-                _masterRouteForId(route.masterRouteId)?.routeNumber ??
-                    route.masterRouteId,
+                _masterRouteForId(route.masterRouteId)?.routeNumber ?? 'Route',
             'routeDisplay':
                 _masterRouteForId(route.masterRouteId)?.routeDisplay ??
-                    route.masterRouteId,
-            'routeName': _masterRouteForId(route.masterRouteId)?.routeName ??
-                route.masterRouteId,
+                    'Route details unavailable',
+            'routeName':
+                _masterRouteForId(route.masterRouteId)?.routeName ?? 'Route',
             'stopBeforeName':
                 _stopNameForId(route.masterRouteId, route.stopBeforeId) ??
-                    route.stopBeforeId,
+                    'Unknown stop',
             'stopAfterName':
                 _stopNameForId(route.masterRouteId, route.stopAfterId) ??
-                    route.stopAfterId,
+                    'Unknown stop',
           },
         ),
       );
@@ -257,6 +258,44 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
       _populateForm(_selectedLounge!);
       _isLoadingLounge = false;
     });
+    await _hydrateSelectedRouteNames();
+  }
+
+  Future<void> _hydrateSelectedRouteNames() async {
+    if (_selectedRoutes.isEmpty) return;
+
+    bool changed = false;
+    for (final route in _selectedRoutes) {
+      final routeId = route['routeId'] as String?;
+      if (routeId == null || routeId.isEmpty) continue;
+
+      if (!_routeStopsByRouteId.containsKey(routeId)) {
+        try {
+          _routeStopsByRouteId[routeId] =
+              await _routeRemoteDataSource.getRouteStops(routeId);
+        } catch (_) {
+          _routeStopsByRouteId[routeId] = const [];
+        }
+      }
+
+      final stopBeforeId = route['stopBeforeId'] as String?;
+      final stopAfterId = route['stopAfterId'] as String?;
+      final resolvedBefore = _stopNameForId(routeId, stopBeforeId);
+      final resolvedAfter = _stopNameForId(routeId, stopAfterId);
+
+      if (resolvedBefore != null && route['stopBeforeName'] != resolvedBefore) {
+        route['stopBeforeName'] = resolvedBefore;
+        changed = true;
+      }
+      if (resolvedAfter != null && route['stopAfterName'] != resolvedAfter) {
+        route['stopAfterName'] = resolvedAfter;
+        changed = true;
+      }
+    }
+
+    if (changed && mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -1060,20 +1099,28 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
 
   String? _stopNameForId(String? routeId, String? stopId) {
     if (stopId == null || stopId.isEmpty) return null;
+    if (routeId != null && _routeStopsByRouteId[routeId]?.isNotEmpty == true) {
+      try {
+        return _routeStopsByRouteId[routeId]!
+            .firstWhere((stop) => stop.id == stopId)
+            .stopName;
+      } catch (_) {}
+    }
+
     final masterRoute = _masterRouteForId(routeId);
-    if (masterRoute == null) return stopId;
+    if (masterRoute == null) return null;
 
     try {
       return masterRoute.stops.firstWhere((stop) => stop.id == stopId).stopName;
     } catch (_) {
-      return stopId;
+      return null;
     }
   }
 
   String _routeLabelForId(String? routeId) {
     final masterRoute = _masterRouteForId(routeId);
     if (masterRoute == null) {
-      return routeId?.isNotEmpty == true ? routeId! : 'Unknown route';
+      return 'Route details unavailable';
     }
     return '${masterRoute.routeNumber}: ${masterRoute.routeName} (${masterRoute.routeDisplay})';
   }
@@ -1097,7 +1144,9 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
                 title: Text(routeLabel),
-                subtitle: Text('Between: $stopBeforeName -> $stopAfterName'),
+                subtitle: Text(
+                  'Between: ${stopBeforeName ?? 'Unknown stop'} -> ${stopAfterName ?? 'Unknown stop'}',
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () {

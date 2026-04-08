@@ -424,15 +424,18 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 orElse: () => categories.first,
               );
 
-              if (_isServiceLikeCategoryName(selectedCategory.name)) {
-                _productType = ProductType.service;
+              final forcedType =
+                  _forcedProductTypeForCategoryName(selectedCategory.name);
+              if (forcedType != null) {
+                _productType = forcedType;
               } else {
                 _selectedPriceRateType = 'fixed';
                 _isPreOrderable = false;
                 _isVegetarian = false;
                 _isVegan = false;
                 _isHalal = false;
-                if (_productType == ProductType.service) {
+                if (_productType == ProductType.service ||
+                    _productType == ProductType.other) {
                   _productType = ProductType.product;
                 }
               }
@@ -450,10 +453,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   Widget _buildProductTypeDropdown() {
-    final isServiceLikeCategory = _isServiceLikeCategory();
+    final forcedProductType = _forcedProductTypeForSelectedCategory();
 
     return DropdownButtonFormField<ProductType>(
-      value: isServiceLikeCategory ? ProductType.service : _productType,
+      value: forcedProductType ?? _productType,
       decoration: const InputDecoration(labelText: 'Product Type'),
       items: ProductType.values.map((type) {
         return DropdownMenuItem<ProductType>(
@@ -461,7 +464,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           child: Text(_getProductTypeName(type)),
         );
       }).toList(),
-      onChanged: isServiceLikeCategory
+      onChanged: forcedProductType != null
           ? null
           : (value) {
               if (value != null) {
@@ -479,6 +482,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         return 'Product (Food/Drink)';
       case ProductType.service:
         return 'Service';
+      case ProductType.other:
+        return 'Other';
       case ProductType.combo:
         return 'Combo Package';
     }
@@ -559,11 +564,45 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     return _isServiceLikeCategoryName(matchedCategory.first.name);
   }
 
+  ProductType? _forcedProductTypeForSelectedCategory() {
+    final categoryId = _selectedCategoryId;
+    if (categoryId == null || categoryId.isEmpty) {
+      return null;
+    }
+
+    final provider = Provider.of<MarketplaceProvider>(context, listen: false);
+    final matchedCategory =
+        provider.categories.where((c) => c.id == categoryId);
+    if (matchedCategory.isEmpty) {
+      return null;
+    }
+
+    return _forcedProductTypeForCategoryName(matchedCategory.first.name);
+  }
+
+  ProductType? _forcedProductTypeForCategoryName(String categoryName) {
+    if (_isElectronicsCategoryName(categoryName)) {
+      return ProductType.other;
+    }
+    if (_isServiceCategoryName(categoryName)) {
+      return ProductType.service;
+    }
+    return null;
+  }
+
   bool _isServiceLikeCategoryName(String categoryName) {
+    return _isServiceCategoryName(categoryName) ||
+        _isElectronicsCategoryName(categoryName);
+  }
+
+  bool _isServiceCategoryName(String categoryName) {
     final normalizedName = categoryName.trim().toLowerCase();
-    return normalizedName == 'service' ||
-        normalizedName == 'services' ||
-        normalizedName == 'electronic item' ||
+    return normalizedName == 'service' || normalizedName == 'services';
+  }
+
+  bool _isElectronicsCategoryName(String categoryName) {
+    final normalizedName = categoryName.trim().toLowerCase();
+    return normalizedName == 'electronic item' ||
         normalizedName == 'electronic items' ||
         normalizedName == 'electronics' ||
         normalizedName == 'electronic';
@@ -786,6 +825,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
 
       final isServiceLikeCategory = _isServiceLikeCategory();
+      final forcedProductType = _forcedProductTypeForSelectedCategory();
 
       final product = LoungeProduct(
         id: widget.product?.id ?? const Uuid().v4(),
@@ -795,7 +835,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        productType: isServiceLikeCategory ? ProductType.service : _productType,
+        productType: forcedProductType ?? _productType,
         price: _priceController.text.trim(),
         priceRateType: isServiceLikeCategory
             ? _toBackendPriceRateType(_selectedPriceRateType)
