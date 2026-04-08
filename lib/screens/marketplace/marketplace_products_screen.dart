@@ -649,9 +649,8 @@ class _MarketplaceProductsScreenState extends State<MarketplaceProductsScreen> {
                           ? 'Product deleted successfully'
                           : 'Failed to delete product',
                     ),
-                    backgroundColor: success
-                        ? AppColors.success
-                        : AppColors.error,
+                    backgroundColor:
+                        success ? AppColors.success : AppColors.error,
                   ),
                 );
               }
