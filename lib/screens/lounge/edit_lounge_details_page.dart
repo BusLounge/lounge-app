@@ -43,8 +43,10 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
   final _postalCodeCtrl = TextEditingController();
 
   late LoungeOwnerRemoteDataSource _loungeOwnerRemoteDataSource;
+  late RouteRemoteDataSource _routeRemoteDataSource;
   late SupabaseStorageService _supabaseStorageService;
   List<Map<String, dynamic>> _districts = [];
+  List<MasterRoute> _masterRoutes = [];
   String? _selectedDistrictId;
   bool _isLoadingDistricts = false;
   String? _districtsError;
@@ -59,9 +61,13 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
     super.initState();
     _loungeOwnerRemoteDataSource =
         InjectionContainer().loungeOwnerRemoteDataSource;
+    _routeRemoteDataSource = RouteRemoteDataSource(
+      apiClient: InjectionContainer().apiClient,
+    );
     _supabaseStorageService = InjectionContainer().supabaseStorageService;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadDistricts();
+      await _loadRoutes();
 
       if (widget.initialLounge != null) {
         final latest = await Provider.of<RegistrationProvider>(
@@ -215,10 +221,20 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
             'routeId': route.masterRouteId,
             'stopBeforeId': route.stopBeforeId,
             'stopAfterId': route.stopAfterId,
-            'routeNumber': route.masterRouteId,
-            'routeDisplay': route.masterRouteId,
-            'stopBeforeName': route.stopBeforeId,
-            'stopAfterName': route.stopAfterId,
+            'routeNumber':
+                _masterRouteForId(route.masterRouteId)?.routeNumber ??
+                    route.masterRouteId,
+            'routeDisplay':
+                _masterRouteForId(route.masterRouteId)?.routeDisplay ??
+                    route.masterRouteId,
+            'routeName': _masterRouteForId(route.masterRouteId)?.routeName ??
+                route.masterRouteId,
+            'stopBeforeName':
+                _stopNameForId(route.masterRouteId, route.stopBeforeId) ??
+                    route.stopBeforeId,
+            'stopAfterName':
+                _stopNameForId(route.masterRouteId, route.stopAfterId) ??
+                    route.stopAfterId,
           },
         ),
       );
@@ -982,6 +998,22 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
     }
   }
 
+  Future<void> _loadRoutes() async {
+    if (!mounted) return;
+    try {
+      final routes = await _routeRemoteDataSource.getMasterRoutes();
+      if (!mounted) return;
+      setState(() {
+        _masterRoutes = routes;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _masterRoutes = [];
+      });
+    }
+  }
+
   List<DropdownMenuItem<String>> _districtDropdownItems() {
     final items = _districts.map((district) {
       final id = district['id'] as String? ?? '';
@@ -1017,6 +1049,35 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
     return districtId;
   }
 
+  MasterRoute? _masterRouteForId(String? routeId) {
+    if (routeId == null || routeId.isEmpty) return null;
+    try {
+      return _masterRoutes.firstWhere((route) => route.id == routeId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _stopNameForId(String? routeId, String? stopId) {
+    if (stopId == null || stopId.isEmpty) return null;
+    final masterRoute = _masterRouteForId(routeId);
+    if (masterRoute == null) return stopId;
+
+    try {
+      return masterRoute.stops.firstWhere((stop) => stop.id == stopId).stopName;
+    } catch (_) {
+      return stopId;
+    }
+  }
+
+  String _routeLabelForId(String? routeId) {
+    final masterRoute = _masterRouteForId(routeId);
+    if (masterRoute == null) {
+      return routeId?.isNotEmpty == true ? routeId! : 'Unknown route';
+    }
+    return '${masterRoute.routeNumber}: ${masterRoute.routeName} (${masterRoute.routeDisplay})';
+  }
+
   Widget _buildSelectedRoutesEditor() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1025,17 +1086,17 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
           ..._selectedRoutes.asMap().entries.map((entry) {
             final index = entry.key;
             final route = entry.value;
-            final routeNumber = route['routeNumber'] as String? ?? 'Route';
-            final routeDisplay = route['routeDisplay'] as String? ?? '';
-            final stopBeforeName =
-                route['stopBeforeName'] as String? ?? route['stopBeforeId'];
-            final stopAfterName =
-                route['stopAfterName'] as String? ?? route['stopAfterId'];
+            final routeId = route['routeId'] as String?;
+            final routeLabel = _routeLabelForId(routeId);
+            final stopBeforeName = route['stopBeforeName'] as String? ??
+                _stopNameForId(routeId, route['stopBeforeId'] as String?);
+            final stopAfterName = route['stopAfterName'] as String? ??
+                _stopNameForId(routeId, route['stopAfterId'] as String?);
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
-                title: Text('$routeNumber: $routeDisplay'),
+                title: Text(routeLabel),
                 subtitle: Text('Between: $stopBeforeName -> $stopAfterName'),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
@@ -1181,7 +1242,7 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
                           return DropdownMenuItem(
                             value: route.id,
                             child: Text(
-                              '${route.routeNumber}: ${route.routeDisplay}',
+                              '${route.routeNumber}: ${route.routeName} (${route.routeDisplay})',
                               overflow: TextOverflow.ellipsis,
                             ),
                           );
@@ -1324,6 +1385,7 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
                             'stopAfterId': selectedStopAfterId!,
                             'routeNumber': selectedRoute.routeNumber,
                             'routeDisplay': selectedRoute.routeDisplay,
+                            'routeName': selectedRoute.routeName,
                             'stopBeforeName': stopBefore.stopName,
                             'stopAfterName': stopAfter.stopName,
                           });
