@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme_config.dart';
@@ -11,6 +12,7 @@ import '../../domain/entities/lounge.dart';
 import '../../domain/entities/lounge_route.dart';
 import '../../data/models/route_model.dart';
 import '../../presentation/providers/registration_provider.dart';
+import '../../presentation/widgets/location_picker_widget.dart';
 import '../../data/datasources/supabase_storage_service.dart';
 
 class EditLoungeDetailsPage extends StatefulWidget {
@@ -303,6 +305,21 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
       return;
     }
 
+    if (_latitudeCtrl.text.trim().isEmpty ||
+        _longitudeCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select the lounge location on the map'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });
@@ -420,6 +437,63 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
+      ),
+    );
+  }
+
+  LatLng? _initialMapLocationFromControllers() {
+    final latitude = double.tryParse(_latitudeCtrl.text.trim());
+    final longitude = double.tryParse(_longitudeCtrl.text.trim());
+    if (latitude == null || longitude == null) return null;
+    return LatLng(latitude, longitude);
+  }
+
+  Widget _buildMapLocationSelector() {
+    final latitude = double.tryParse(_latitudeCtrl.text.trim());
+    final longitude = double.tryParse(_longitudeCtrl.text.trim());
+    final hasLocation = latitude != null && longitude != null;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: hasLocation ? Colors.grey.shade300 : Colors.red,
+          width: hasLocation ? 1 : 2,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.map, color: AppColors.primary),
+        title: Text(
+          hasLocation ? 'Location Selected' : 'Select Location on Map *',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: hasLocation ? Colors.black87 : Colors.red,
+          ),
+        ),
+        subtitle: hasLocation
+            ? Text(
+                'Lat: ${latitude.toStringAsFixed(6)}, Lng: ${longitude.toStringAsFixed(6)}',
+                style: const TextStyle(fontSize: 12),
+              )
+            : const Text('Tap to open map and select lounge location'),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LocationPickerWidget(
+                initialLocation: _initialMapLocationFromControllers(),
+                onLocationSelected: (location, address) {
+                  setState(() {
+                    _latitudeCtrl.text = location.latitude.toString();
+                    _longitudeCtrl.text = location.longitude.toString();
+                  });
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -788,36 +862,7 @@ class _EditLoungeDetailsPageState extends State<EditLoungeDetailsPage> {
                       ),
                       const SizedBox(height: 16),
 
-                      TextFormField(
-                        controller: _latitudeCtrl,
-                        decoration: _inputDecoration(
-                          'Latitude',
-                          Icons.place_outlined,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          signed: true,
-                          decimal: true,
-                        ),
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'Please enter latitude'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        controller: _longitudeCtrl,
-                        decoration: _inputDecoration(
-                          'Longitude',
-                          Icons.place,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          signed: true,
-                          decimal: true,
-                        ),
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'Please enter longitude'
-                            : null,
-                      ),
+                      _buildMapLocationSelector(),
                       const SizedBox(height: 16),
 
                       TextFormField(

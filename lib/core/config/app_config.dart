@@ -1,14 +1,12 @@
 class AppConfig {
-  // API Configuration - local backend by default.
-  // Override with --dart-define=LOCAL_BACKEND_URL=http://192.168.1.25:8080
-  static const String _defaultLocalBackendHost =
-      String.fromEnvironment('LOCAL_BACKEND_HOST', defaultValue: '10.0.2.2');
-  static const String _defaultLocalBackendPort =
-      String.fromEnvironment('LOCAL_BACKEND_PORT', defaultValue: '8080');
+    // API Configuration - Choreo backend by default.
+    // Override with --dart-define=LOCAL_BACKEND_URL=...
+    static const String _defaultBackendUrl =
+            'https://6ed89a53-55ef-45f1-a497-e383bfedea00-dev.e1-us-east-azure.choreoapis.dev/default/backendloungeowner/v1.0';
 
   static const String baseUrl = String.fromEnvironment(
     'LOCAL_BACKEND_URL',
-    defaultValue: 'http://$_defaultLocalBackendHost:$_defaultLocalBackendPort',
+        defaultValue: _defaultBackendUrl,
   );
   static const String apiVersion = 'v1';
   static const String apiBaseUrl =

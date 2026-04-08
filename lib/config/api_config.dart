@@ -2,17 +2,14 @@ class ApiConfig {
   // ============================================
   // BACKEND CONFIGURATION
   // ============================================
-  // Default local backend for Android emulator. Override with:
-  // --dart-define=LOCAL_BACKEND_URL=http://192.168.1.25:8080
-  // or --dart-define=LOCAL_BACKEND_HOST=192.168.1.25 --dart-define=LOCAL_BACKEND_PORT=8080
-  static const String _defaultLocalBackendHost =
-      String.fromEnvironment('LOCAL_BACKEND_HOST', defaultValue: '10.0.2.2');
-  static const String _defaultLocalBackendPort =
-      String.fromEnvironment('LOCAL_BACKEND_PORT', defaultValue: '8080');
+    // Default backend points to the Choreo deployment.
+    // Override with --dart-define=LOCAL_BACKEND_URL=...
+    static const String _defaultBackendUrl =
+            'https://6ed89a53-55ef-45f1-a497-e383bfedea00-dev.e1-us-east-azure.choreoapis.dev/default/backendloungeowner/v1.0';
 
   static const String localBaseUrl = String.fromEnvironment(
     'LOCAL_BACKEND_URL',
-    defaultValue: 'http://$_defaultLocalBackendHost:$_defaultLocalBackendPort',
+        defaultValue: _defaultBackendUrl,
   );
 
   // Kept for backward compatibility
@@ -39,7 +36,7 @@ class ApiConfig {
   static const String loungeStaffProfileUpdateEndpoint =
       '/api/v1/lounge-staff/profile/update';
 
-  // Helper methods to get the correct base URL (all point to local)
+    // Helper methods to get the correct base URL.
   static String getAuthBaseUrl() => localBaseUrl;
   static String getLoungeBaseUrl() => localBaseUrl;
 
@@ -62,7 +59,7 @@ class ApiConfig {
   static String get loungeStaffProfileUpdateUrl =>
       '${getLoungeBaseUrl()}$loungeStaffProfileUpdateEndpoint';
 
-  // Lounge-specific APIs use local backend
+    // Lounge-specific APIs use the same backend base URL.
   static String loungeUrl(String loungeId, String path) =>
       '${getLoungeBaseUrl()}/api/v1/lounges/$loungeId$path';
   static String loungeStaffUrl(String loungeId) =>
