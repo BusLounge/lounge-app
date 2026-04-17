@@ -31,7 +31,7 @@ class LoungeBookingModel extends LoungeBooking {
         _dateTimeFromJson(json['scheduled_arrival']);
     final checkOutTime = _dateTimeFromJson(json['check_out_time']);
     final scheduledDeparture = _dateTimeFromJson(json['scheduled_departure']) ??
-      _dateTimeFromJson(json['scheduled_departure_time']);
+        _dateTimeFromJson(json['scheduled_departure_time']);
     final createdAt = _dateTimeFromJson(json['created_at']);
     final updatedAt = _dateTimeFromJson(json['updated_at']) ?? createdAt;
 

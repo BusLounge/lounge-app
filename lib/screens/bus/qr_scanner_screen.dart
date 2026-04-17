@@ -27,6 +27,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   String? _scannedQrCodeData;
   LoungeBooking? _booking;
   String? _errorMessage;
+  int _scannerSession = 0;
 
   static final RegExp _qrCodeDataRegex = RegExp(
     r'(LQ-[A-Za-z0-9-]+)',
@@ -167,9 +168,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       _errorMessage = null;
       _booking = null;
       _scannedQrCodeData = null;
+      _scannerSession++;
     });
 
-    await _cameraController.start();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        await _cameraController.stop();
+      } catch (_) {}
+      if (!mounted) return;
+      try {
+        await _cameraController.start();
+      } catch (_) {}
+    });
   }
 
   Future<void> _showManualReferenceDialog() async {
@@ -380,6 +391,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: MobileScanner(
+          key: ValueKey(_scannerSession),
           controller: _cameraController,
           fit: BoxFit.cover,
           onDetect: _onDetect,
