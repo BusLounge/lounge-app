@@ -58,6 +58,7 @@ class LoungeBookingProvider extends ChangeNotifier {
       );
 
       _bookings = bookingModels;
+      await _autoCheckoutExpiredCheckedInBookings();
       _isLoading = false;
       notifyListeners();
       return true;
@@ -87,6 +88,7 @@ class LoungeBookingProvider extends ChangeNotifier {
         loungeId: loungeId,
       );
       _bookings = bookingModels;
+      await _autoCheckoutExpiredCheckedInBookings();
       _isLoading = false;
       notifyListeners();
       return true;
@@ -296,6 +298,7 @@ class LoungeBookingProvider extends ChangeNotifier {
       );
 
       _bookings = result['bookings'] as List<LoungeBooking>;
+      await _autoCheckoutExpiredCheckedInBookings();
       _isLoading = false;
       notifyListeners();
 
@@ -414,6 +417,47 @@ class LoungeBookingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _autoCheckoutExpiredCheckedInBookings() async {
+    final now = DateTime.now();
+    final expiredCheckedInBookings = _bookings.where((booking) {
+      if (booking.status.toLowerCase() != 'checked_in') return false;
+
+      final checkoutDeadline = booking.scheduledDeparture ??
+          booking.checkInTime.add(Duration(hours: booking.durationHours));
+      return !checkoutDeadline.isAfter(now);
+    }).toList();
+
+    for (final booking in expiredCheckedInBookings) {
+      try {
+        final result = await remoteDataSource.toggleBookingCheckInOut(
+          bookingId: booking.id,
+        );
+
+        final bookingJson = result['booking'];
+        if (bookingJson is Map<String, dynamic>) {
+          final updatedBooking = LoungeBookingModel.fromJson(bookingJson);
+          _bookings = _bookings.map((item) {
+            return item.id == booking.id ? updatedBooking : item;
+          }).toList();
+
+          if (_selectedBooking?.id == booking.id) {
+            _selectedBooking = updatedBooking;
+          }
+        } else {
+          _bookings = _bookings.map((item) {
+            if (item.id == booking.id) {
+              return LoungeBookingModel.fromEntity(item)
+                  .copyWithStatus('checked_out');
+            }
+            return item;
+          }).toList();
+        }
+      } catch (_) {
+        // Ignore auto-checkout failures and keep displaying fetched data.
+      }
+    }
+  }
+
   /// Reset provider state
   void reset() {
     _isLoading = false;
@@ -433,6 +477,7 @@ extension on LoungeBookingModel {
       bookingReference: bookingReference,
       checkInTime: checkInTime,
       checkOutTime: checkOutTime,
+      scheduledDeparture: scheduledDeparture,
       durationHours: durationHours,
       guestCount: guestCount,
       status: status,

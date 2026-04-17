@@ -265,13 +265,6 @@ class _BookingOrdersPageState extends State<BookingOrdersPage> {
               fontSize: 12,
             ),
           ),
-          Text(
-            'Booking ID: ${widget.bookingId}',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
-          ),
           const SizedBox(height: 10),
           Row(
             children: [

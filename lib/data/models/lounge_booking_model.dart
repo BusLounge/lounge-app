@@ -10,6 +10,7 @@ class LoungeBookingModel extends LoungeBooking {
     required super.bookingReference,
     required super.checkInTime,
     super.checkOutTime,
+    super.scheduledDeparture,
     required super.durationHours,
     required super.guestCount,
     required super.status,
@@ -29,6 +30,8 @@ class LoungeBookingModel extends LoungeBooking {
     final checkInTime = _dateTimeFromJson(json['check_in_time']) ??
         _dateTimeFromJson(json['scheduled_arrival']);
     final checkOutTime = _dateTimeFromJson(json['check_out_time']);
+    final scheduledDeparture = _dateTimeFromJson(json['scheduled_departure']) ??
+      _dateTimeFromJson(json['scheduled_departure_time']);
     final createdAt = _dateTimeFromJson(json['created_at']);
     final updatedAt = _dateTimeFromJson(json['updated_at']) ?? createdAt;
 
@@ -57,6 +60,7 @@ class LoungeBookingModel extends LoungeBooking {
       bookingReference: _stringFromJson(json['booking_reference']) ?? '',
       checkInTime: checkInTime ?? DateTime.now(),
       checkOutTime: checkOutTime,
+      scheduledDeparture: scheduledDeparture,
       durationHours: _intFromJson(json['duration_hours']) ?? 1,
       guestCount: _intFromJson(json['guest_count']) ??
           _intFromJson(json['number_of_guests']) ??
@@ -97,8 +101,9 @@ class LoungeBookingModel extends LoungeBooking {
 
   static String? _combineName(String? firstName, String? lastName) {
     final parts = [firstName, lastName]
-        .where((part) => part != null && part!.trim().isNotEmpty)
-        .map((part) => part!.trim())
+        .whereType<String>()
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
         .toList();
     if (parts.isEmpty) return null;
     return parts.join(' ');
@@ -142,6 +147,8 @@ class LoungeBookingModel extends LoungeBooking {
       'check_in_time': checkInTime.toIso8601String(),
       if (checkOutTime != null)
         'check_out_time': checkOutTime!.toIso8601String(),
+      if (scheduledDeparture != null)
+        'scheduled_departure': scheduledDeparture!.toIso8601String(),
       'duration_hours': durationHours,
       'guest_count': guestCount,
       'status': status,
@@ -166,6 +173,7 @@ class LoungeBookingModel extends LoungeBooking {
       bookingReference: entity.bookingReference,
       checkInTime: entity.checkInTime,
       checkOutTime: entity.checkOutTime,
+      scheduledDeparture: entity.scheduledDeparture,
       durationHours: entity.durationHours,
       guestCount: entity.guestCount,
       status: entity.status,

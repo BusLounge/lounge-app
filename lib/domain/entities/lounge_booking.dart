@@ -7,6 +7,7 @@ class LoungeBooking {
   final String bookingReference;
   final DateTime checkInTime;
   final DateTime? checkOutTime;
+  final DateTime? scheduledDeparture;
   final int durationHours;
   final int guestCount;
   final String status; // pending, active, completed, cancelled
@@ -31,6 +32,7 @@ class LoungeBooking {
     required this.bookingReference,
     required this.checkInTime,
     this.checkOutTime,
+    this.scheduledDeparture,
     required this.durationHours,
     required this.guestCount,
     required this.status,
