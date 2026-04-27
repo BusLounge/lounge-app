@@ -1203,7 +1203,7 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
         final routes = await routeDataSource.getMasterRoutes();
 
         allRoutes = routes;
-        dialogRoutes = routes.take(5).toList();
+        dialogRoutes = routes;
 
         setDialogState(() {
           loadingInitialRoutes = false;
@@ -1223,19 +1223,16 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
     void filterRoutes(String query, StateSetter setDialogState) {
       if (query.isEmpty) {
         setDialogState(() {
-          dialogRoutes = allRoutes.take(5).toList();
+          dialogRoutes = allRoutes;
         });
       } else {
-        final filtered = allRoutes
-            .where((route) {
-              final q = query.toLowerCase();
-              return route.routeNumber.toLowerCase().contains(q) ||
-                  route.routeName.toLowerCase().contains(q) ||
-                  route.originCity.toLowerCase().contains(q) ||
-                  route.destinationCity.toLowerCase().contains(q);
-            })
-            .take(5)
-            .toList();
+        final filtered = allRoutes.where((route) {
+          final q = query.toLowerCase();
+          return route.routeNumber.toLowerCase().contains(q) ||
+              route.routeName.toLowerCase().contains(q) ||
+              route.originCity.toLowerCase().contains(q) ||
+              route.destinationCity.toLowerCase().contains(q);
+        }).toList();
 
         setDialogState(() {
           dialogRoutes = filtered;
@@ -1430,6 +1427,23 @@ class _AddLoungeScreenState extends State<AddLoungeScreen> {
                         selectedStopBeforeId != null &&
                         selectedStopAfterId != null)
                     ? () {
+                        final beforeIndex = routeStops.indexWhere(
+                          (s) => s.id == selectedStopBeforeId,
+                        );
+                        final afterIndex = routeStops.indexWhere(
+                          (s) => s.id == selectedStopAfterId,
+                        );
+                        if (afterIndex <= beforeIndex) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Stop After must come after Stop Before',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
                         final selectedRoute = dialogRoutes.firstWhere(
                           (r) => r.id == selectedRouteId,
                           orElse: () => allRoutes.firstWhere(

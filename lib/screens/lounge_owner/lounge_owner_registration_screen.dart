@@ -1855,8 +1855,7 @@ class _LoungeOwnerRegistrationScreenState
         print('📍 Dialog - Loaded ${routes.length} master routes');
 
         allRoutes = routes;
-        // Show first 5 routes initially (like Google search suggestions)
-        dialogRoutes = routes.take(5).toList();
+        dialogRoutes = routes;
 
         setDialogState(() {
           loadingInitialRoutes = false;
@@ -1877,22 +1876,18 @@ class _LoungeOwnerRegistrationScreenState
     // Function to filter routes based on search query
     void filterRoutes(String query, StateSetter setDialogState) {
       if (query.isEmpty) {
-        // Show first 5 routes when search is empty
         setDialogState(() {
-          dialogRoutes = allRoutes.take(5).toList();
+          dialogRoutes = allRoutes;
         });
       } else {
         // Filter routes by query
-        final filtered = allRoutes
-            .where((route) {
-              final q = query.toLowerCase();
-              return route.routeNumber.toLowerCase().contains(q) ||
-                  route.routeName.toLowerCase().contains(q) ||
-                  route.originCity.toLowerCase().contains(q) ||
-                  route.destinationCity.toLowerCase().contains(q);
-            })
-            .take(5)
-            .toList();
+        final filtered = allRoutes.where((route) {
+          final q = query.toLowerCase();
+          return route.routeNumber.toLowerCase().contains(q) ||
+              route.routeName.toLowerCase().contains(q) ||
+              route.originCity.toLowerCase().contains(q) ||
+              route.destinationCity.toLowerCase().contains(q);
+        }).toList();
 
         setDialogState(() {
           dialogRoutes = filtered;
