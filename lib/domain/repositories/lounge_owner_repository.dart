@@ -45,4 +45,21 @@ abstract class LoungeOwnerRepository {
     String? managerEmail,
     String? districtId,
   });
+
+    /// Create bank details for lounge owner
+    Future<Either<Failure, Map<String, dynamic>>> createBankDetails({
+      required String bankName,
+      required String branchName,
+      required String branchCode,
+      required String acType,
+      required String acHolderName,
+      required String acNumber,
+      required String? swiftCode,
+    });
+
+    /// Create bank link for lounge owner
+    Future<Either<Failure, Map<String, dynamic>>> createBankLink({
+      required String bankDetailsId,
+      String? loungeId,
+    });
 }

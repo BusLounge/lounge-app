@@ -65,24 +65,26 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  late final RealtimeSocketService _realtimeSocketService;
+  RealtimeSocketService? _realtimeSocketService;
   StreamSubscription<RealtimeEvent>? _realtimeSubscription;
 
   @override
   void initState() {
     super.initState();
 
-    _realtimeSocketService = RealtimeSocketService(
-      baseUrl: AppConfig.webSocketUrl,
-      accessTokenProvider: () async {
-        final tokens = await widget.di.authLocalDataSource.getTokens();
-        return tokens?.accessToken;
-      },
-    );
+    if (AppConfig.webSocketEnabled) {
+      _realtimeSocketService = RealtimeSocketService(
+        baseUrl: AppConfig.webSocketUrl,
+        accessTokenProvider: () async {
+          final tokens = await widget.di.authLocalDataSource.getTokens();
+          return tokens?.accessToken;
+        },
+      );
 
-    _realtimeSubscription = _realtimeSocketService.events.listen((event) {
-      unawaited(_handleRealtimeEvent(event));
-    });
+      _realtimeSubscription = _realtimeSocketService!.events.listen((event) {
+        unawaited(_handleRealtimeEvent(event));
+      });
+    }
 
     widget.di.authProvider.addListener(_handleAuthStateChanged);
     unawaited(_syncRealtimeConnection());
@@ -92,7 +94,7 @@ class _MyAppState extends State<MyApp> {
   void dispose() {
     widget.di.authProvider.removeListener(_handleAuthStateChanged);
     _realtimeSubscription?.cancel();
-    unawaited(_realtimeSocketService.dispose());
+    unawaited(_realtimeSocketService?.dispose() ?? Future.value());
     super.dispose();
   }
 
@@ -101,16 +103,21 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _syncRealtimeConnection() async {
+    final realtime = _realtimeSocketService;
+    if (realtime == null) {
+      return;
+    }
+
     final authProvider = widget.di.authProvider;
     final user = authProvider.user;
 
     if (!authProvider.isAuthenticated || user == null) {
-      await _realtimeSocketService.disconnect();
+      await realtime.disconnect();
       return;
     }
 
     try {
-      await _realtimeSocketService.connect(userId: user.id, roles: user.roles);
+      await realtime.connect(userId: user.id, roles: user.roles);
     } catch (_) {
       // Keep app flow running even when realtime backend is unavailable.
     }

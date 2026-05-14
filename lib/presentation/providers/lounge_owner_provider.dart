@@ -7,6 +7,8 @@ import '../../domain/usecases/upload_nic_images.dart';
 import '../../domain/usecases/get_registration_progress.dart';
 import '../../domain/usecases/check_ocr_block.dart';
 import '../../domain/usecases/get_profile.dart';
+import 'package:dartz/dartz.dart';
+import '../../core/error/failures.dart';
 
 /// Provider for lounge owner operations
 /// Manages state for business info, manager NIC upload, and profile
@@ -240,6 +242,38 @@ class LoungeOwnerProvider with ChangeNotifier {
   void clearData() {
     reset();
   }
+
+    /// Create bank details for lounge owner
+    Future<Either<Failure, Map<String, dynamic>>> createBankDetails({
+      required String bankName,
+      required String branchName,
+      required String branchCode,
+      required String acType,
+      required String acHolderName,
+      required String acNumber,
+      required String? swiftCode,
+    }) async {
+      return await loungeOwnerRepository.createBankDetails(
+        bankName: bankName,
+        branchName: branchName,
+        branchCode: branchCode,
+        acType: acType,
+        acHolderName: acHolderName,
+        acNumber: acNumber,
+        swiftCode: swiftCode,
+      );
+    }
+
+    /// Create bank link for lounge owner
+    Future<Either<Failure, Map<String, dynamic>>> createBankLink({
+      required String bankDetailsId,
+      String? loungeId,
+    }) async {
+      return await loungeOwnerRepository.createBankLink(
+        bankDetailsId: bankDetailsId,
+        loungeId: loungeId,
+      );
+    }
 
   /// Clear error message
   void clearError() {

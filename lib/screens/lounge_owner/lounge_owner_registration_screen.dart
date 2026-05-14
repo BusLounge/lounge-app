@@ -36,6 +36,7 @@ class _LoungeOwnerRegistrationScreenState
     extends State<LoungeOwnerRegistrationScreen> {
   final List<String> _steps = [
     'Business & Manager',
+    'Banking Details',
     'Review & Submit',
   ];
 
@@ -53,6 +54,7 @@ class _LoungeOwnerRegistrationScreenState
 
   // Form keys
   final _businessInfoFormKey = GlobalKey<FormState>();
+  final _bankingDetailsFormKey = GlobalKey<FormState>();
   final _loungeDetailsFormKey = GlobalKey<FormState>();
 
   // Step 1 fields - Business & Manager Info
@@ -62,6 +64,21 @@ class _LoungeOwnerRegistrationScreenState
   final _managerFullNameController = TextEditingController();
   final _managerNicNumberController = TextEditingController();
   final _managerEmailController = TextEditingController();
+
+  // Step 2 fields - Banking Details
+  final _accountHolderNameController = TextEditingController();
+  final _bankNameController = TextEditingController();
+  final _branchNameController = TextEditingController();
+  final _branchCodeController = TextEditingController();
+  final _accountNumberController = TextEditingController();
+  final _swiftCodeController = TextEditingController();
+  String? _selectedAccountType;
+  static const List<String> _accountTypes = [
+    'Savings Account',
+    'Current Account',
+    'Business Account',
+    'Joint Account',
+  ];
 
   // Step 3 fields
   final _loungeNameController = TextEditingController();
@@ -100,6 +117,12 @@ class _LoungeOwnerRegistrationScreenState
     _managerFullNameController.dispose();
     _managerNicNumberController.dispose();
     _managerEmailController.dispose();
+    _accountHolderNameController.dispose();
+    _bankNameController.dispose();
+    _branchNameController.dispose();
+    _branchCodeController.dispose();
+    _accountNumberController.dispose();
+    _swiftCodeController.dispose();
     _loungeNameController.dispose();
     _descriptionController.dispose();
     _addressController.dispose();
@@ -118,6 +141,7 @@ class _LoungeOwnerRegistrationScreenState
     super.initState();
     _loungeOwnerRemoteDataSource =
         InjectionContainer().loungeOwnerRemoteDataSource;
+    _accountHolderNameController.text = _managerFullNameController.text;
     _loadDistricts();
     // Don't load routes on init - load only when user searches
   }
@@ -425,14 +449,176 @@ class _LoungeOwnerRegistrationScreenState
       case 0:
         return _buildBusinessInfoStep();
       case 1:
-        return _buildOwnerReviewStep();
+        return _buildBankingDetailsStep();
       case 2:
-        return _buildLoungeDetailsStep();
+        return _buildOwnerReviewStep();
       case 3:
+        return _buildLoungeDetailsStep();
+      case 4:
         return _buildReviewStep();
       default:
         return const SizedBox();
     }
+  }
+
+  Widget _buildBankingDetailsStep() {
+    return Form(
+      key: _bankingDetailsFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Banking Details',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Provide account details for lounge owner withdrawals.',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: _accountHolderNameController,
+            decoration: InputDecoration(
+              labelText: 'Account Holder Name *',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.person),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Account holder name is required';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _bankNameController,
+            decoration: InputDecoration(
+              labelText: 'Bank Name *',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.account_balance),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Bank name is required';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _branchCodeController,
+            decoration: InputDecoration(
+              labelText: 'Branch Code *',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.account_tree),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Branch code is required';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _branchNameController,
+            decoration: InputDecoration(
+              labelText: 'Branch Name *',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.location_city),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Branch name is required';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: _selectedAccountType,
+            decoration: InputDecoration(
+              labelText: 'Account Type *',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.category),
+            ),
+            items: _accountTypes
+                .map(
+                  (type) => DropdownMenuItem<String>(
+                    value: type,
+                    child: Text(type),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedAccountType = value;
+              });
+            },
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Account type is required';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _accountNumberController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Account Number *',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.numbers),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Account number is required';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _swiftCodeController,
+            decoration: InputDecoration(
+              labelText: 'SWIFT Code (Optional)',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.qr_code),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.withOpacity(0.2)),
+            ),
+            child: const Text(
+              'By continuing, you consent to processing your banking details under the PDPA 2022 Act for owner payout withdrawals.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildOwnerReviewStep() {
@@ -461,6 +647,20 @@ class _LoungeOwnerRegistrationScreenState
             'Manager NIC: ${registrationProvider.managerNicNumber ?? 'N/A'}',
             'Manager Email: ${registrationProvider.managerEmail?.isNotEmpty == true ? registrationProvider.managerEmail : 'N/A'}',
             'District: ${_selectedDistrictName() ?? 'N/A'}',
+          ],
+        ),
+        const SizedBox(height: 20),
+        _buildReviewSection(
+          title: 'Banking Information',
+          icon: Icons.account_balance_wallet,
+          items: [
+            'Account Holder: ${_accountHolderNameController.text.trim().isEmpty ? 'N/A' : _accountHolderNameController.text.trim()}',
+            'Bank Name: ${_bankNameController.text.trim().isEmpty ? 'N/A' : _bankNameController.text.trim()}',
+            'Branch Name: ${_branchNameController.text.trim().isEmpty ? 'N/A' : _branchNameController.text.trim()}',
+            'Branch Code: ${_branchCodeController.text.trim().isEmpty ? 'N/A' : _branchCodeController.text.trim()}',
+            'Account Type: ${_selectedAccountType ?? 'N/A'}',
+            'Account Number: ${_accountNumberController.text.trim().isEmpty ? 'N/A' : _accountNumberController.text.trim()}',
+            'SWIFT Code: ${_swiftCodeController.text.trim().isEmpty ? 'N/A' : _swiftCodeController.text.trim()}',
           ],
         ),
         const SizedBox(height: 20),
@@ -1492,15 +1692,18 @@ class _LoungeOwnerRegistrationScreenState
         await _handleStep1Next(registrationProvider);
         break;
       case 1:
-        await _submitOwnerRegistration(context, loungeOwnerProvider);
+        await _handleBankingDetailsNext(registrationProvider);
         break;
       case 2:
+        await _submitOwnerRegistration(context, loungeOwnerProvider);
+        break;
+      case 3:
         await _handleStep2Next(
           registrationProvider,
           InjectionContainer().supabaseStorageService,
         );
         break;
-      case 3:
+      case 4:
         await _submitRegistration(context);
         break;
     }
@@ -1540,6 +1743,20 @@ class _LoungeOwnerRegistrationScreenState
     }
 
     print('✅ Screen - Step 1: Business info saved locally, moving to review');
+    if (_accountHolderNameController.text.trim().isEmpty) {
+      _accountHolderNameController.text =
+          _managerFullNameController.text.trim();
+    }
+    registrationProvider.nextStep();
+  }
+
+  Future<void> _handleBankingDetailsNext(
+    RegistrationProvider registrationProvider,
+  ) async {
+    if (!_bankingDetailsFormKey.currentState!.validate()) {
+      return;
+    }
+
     registrationProvider.nextStep();
   }
 
@@ -1576,15 +1793,71 @@ class _LoungeOwnerRegistrationScreenState
     );
 
     if (success) {
-      if (mounted) {
-        registrationProvider.reset();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration completed successfully.'),
-            backgroundColor: Colors.green,
-          ),
+      try {
+        final bankDetailsResult = await loungeOwnerProvider.createBankDetails(
+          bankName: _bankNameController.text.trim(),
+          branchName: _branchNameController.text.trim(),
+          branchCode: _branchCodeController.text.trim(),
+          acType: (_selectedAccountType ?? 'Savings Account')
+              .toLowerCase()
+              .replaceAll(' account', ''),
+          acHolderName: _accountHolderNameController.text.trim(),
+          acNumber: _accountNumberController.text.trim(),
+          swiftCode: _swiftCodeController.text.trim().isEmpty
+              ? null
+              : _swiftCodeController.text.trim(),
         );
-        Navigator.of(context).pushReplacementNamed('/home');
+
+        String? bankDetailsId;
+        final bankDetailsError = bankDetailsResult.fold(
+          (failure) => failure.message,
+          (data) {
+            bankDetailsId = data['id'] as String?;
+            return null;
+          },
+        );
+
+        if (bankDetailsError != null) {
+          throw Exception(bankDetailsError);
+        }
+
+        if (bankDetailsId == null || bankDetailsId!.isEmpty) {
+          throw Exception('Bank details were saved but no id was returned');
+        }
+
+        final bankLinkResult = await loungeOwnerProvider.createBankLink(
+          bankDetailsId: bankDetailsId!,
+          loungeId: null,
+        );
+
+        final bankLinkError = bankLinkResult.fold(
+          (failure) => failure.message,
+          (_) => null,
+        );
+
+        if (bankLinkError != null) {
+          throw Exception(bankLinkError);
+        }
+
+        if (mounted) {
+          registrationProvider.reset();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registration completed successfully.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to save banking details: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } else {
       if (mounted) {

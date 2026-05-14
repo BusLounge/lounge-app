@@ -781,4 +781,98 @@ class LoungeOwnerRemoteDataSource {
       throw ServerException(e.toString());
     }
   }
+
+  /// Create bank details for lounge owner
+  /// POST /api/v1/lounge-owner/bank-details
+  Future<Map<String, dynamic>> createBankDetails({
+    required String bankName,
+    required String branchName,
+    required String branchCode,
+    required String acType,
+    required String acHolderName,
+    required String acNumber,
+    required String? swiftCode,
+  }) async {
+    try {
+      final data = {
+        'bank_name': bankName,
+        'branch_name': branchName,
+        'branch_code': branchCode,
+        'ac_type': acType,
+        'ac_holder_name': acHolderName,
+        'ac_number': acNumber,
+      };
+
+      if (swiftCode != null && swiftCode.isNotEmpty) {
+        data['swift_code'] = swiftCode;
+      }
+
+      print('📤 Creating bank details request');
+
+      final response = await apiClient.post(
+        '/api/v1/lounge-owner/bank-details',
+        data: data,
+      );
+
+      if (response.statusCode != 201) {
+        throw ServerException('Failed to create bank details');
+      }
+
+      print('✅ Bank details created successfully');
+      final bankDetails = response.data['bank_details'] as Map<String, dynamic>?;
+      return bankDetails ?? response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      print('❌ DioException in createBankDetails:');
+      print('   Status Code: ${e.response?.statusCode}');
+      print('   Response Data: ${e.response?.data}');
+      final errorMessage =
+          e.response?.data?['message'] ?? e.message ?? 'Unknown error';
+      throw ServerException('Create bank details failed: $errorMessage');
+    } catch (e) {
+      print('❌ Error: $e');
+      throw ServerException(e.toString());
+    }
+  }
+
+  /// Create bank link for lounge owner
+  /// POST /api/v1/lounge-owner/bank-links
+  Future<Map<String, dynamic>> createBankLink({
+    required String bankDetailsId,
+    String? loungeId,
+  }) async {
+    try {
+      final data = {
+        'bank_details_id': bankDetailsId,
+      };
+
+      if (loungeId != null && loungeId.isNotEmpty) {
+        data['lounge_id'] = loungeId;
+      }
+
+      print('📤 Creating bank link: $data');
+
+      final response = await apiClient.post(
+        '/api/v1/lounge-owner/bank-links',
+        data: data,
+      );
+
+      if (response.statusCode != 201) {
+        throw ServerException('Failed to create bank link');
+      }
+
+      print('✅ Bank link created successfully');
+      final bankLink = response.data['bank_link'] as Map<String, dynamic>?;
+      return bankLink ?? response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      print('❌ DioException in createBankLink:');
+      print('   Status Code: ${e.response?.statusCode}');
+      print('   Response Data: ${e.response?.data}');
+      final errorMessage =
+          e.response?.data?['message'] ?? e.message ?? 'Unknown error';
+      throw ServerException('Create bank link failed: $errorMessage');
+    } catch (e) {
+      print('❌ Error: $e');
+      throw ServerException(e.toString());
+    }
+  }
 }
