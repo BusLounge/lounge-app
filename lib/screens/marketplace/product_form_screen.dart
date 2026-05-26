@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../config/theme_config.dart';
+import '../../core/di/injection_container.dart';
 import '../../domain/entities/lounge_product.dart';
 import '../../presentation/providers/marketplace_provider.dart';
 
@@ -403,8 +402,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         final hasSelectedCategory = categories.any(
           (category) => category.id == _selectedCategoryId,
         );
-        final effectiveSelectedCategoryId =
-            hasSelectedCategory ? _selectedCategoryId : null;
+        final effectiveSelectedCategoryId = hasSelectedCategory
+            ? _selectedCategoryId
+            : null;
 
         return DropdownButtonFormField<String>(
           value: effectiveSelectedCategoryId,
@@ -424,8 +424,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 orElse: () => categories.first,
               );
 
-              final forcedType =
-                  _forcedProductTypeForCategoryName(selectedCategory.name);
+              final forcedType = _forcedProductTypeForCategoryName(
+                selectedCategory.name,
+              );
               if (forcedType != null) {
                 _productType = forcedType;
               } else {
@@ -555,8 +556,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     }
 
     final provider = Provider.of<MarketplaceProvider>(context, listen: false);
-    final matchedCategory =
-        provider.categories.where((c) => c.id == categoryId);
+    final matchedCategory = provider.categories.where(
+      (c) => c.id == categoryId,
+    );
     if (matchedCategory.isEmpty) {
       return false;
     }
@@ -571,8 +573,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     }
 
     final provider = Provider.of<MarketplaceProvider>(context, listen: false);
-    final matchedCategory =
-        provider.categories.where((c) => c.id == categoryId);
+    final matchedCategory = provider.categories.where(
+      (c) => c.id == categoryId,
+    );
     if (matchedCategory.isEmpty) {
       return null;
     }
@@ -828,7 +831,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       final forcedProductType = _forcedProductTypeForSelectedCategory();
 
       final product = LoungeProduct(
-        id: widget.product?.id ?? const Uuid().v4(),
+        id:
+            widget.product?.id ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         loungeId: widget.loungeId,
         categoryId: _selectedCategoryId!,
         name: _nameController.text.trim(),
@@ -909,18 +914,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     setState(() => _isUploadingImage = true);
 
     try {
-      final supabase = Supabase.instance.client;
-      final fileName = '${widget.loungeId}_${const Uuid().v4()}.jpg';
-      final path = 'products/$fileName';
-
-      await supabase.storage
-          .from('lounge_photos')
-          .upload(path, _selectedImage!);
-
-      final imageUrl =
-          supabase.storage.from('lounge_photos').getPublicUrl(path);
-
-      return imageUrl;
+      final storageService = InjectionContainer().supabaseStorageService;
+      return await storageService.uploadProductImage(
+        imageFile: _selectedImage!,
+        loungeId: widget.loungeId,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

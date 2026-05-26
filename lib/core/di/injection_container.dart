@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Data sources
@@ -60,7 +59,6 @@ import '../../presentation/providers/driver_provider.dart';
 
 // Config
 import '../../config/api_config.dart';
-import '../config/app_config.dart';
 
 // Utils
 import '../utils/device_info_helper.dart';
@@ -76,10 +74,8 @@ class InjectionContainer {
   // Dependencies
   late Dio _dio;
   late FlutterSecureStorage _secureStorage;
-  late SharedPreferences _sharedPreferences;
   late DeviceInfoHelper _deviceInfoHelper;
   late ApiClient _apiClient;
-  late SupabaseClient _supabaseClient;
 
   // Data sources
   late AuthRemoteDataSource _authRemoteDataSource;
@@ -137,18 +133,11 @@ class InjectionContainer {
     // ========== Core ==========
     // IMPORTANT: Initialize storage BEFORE Dio (interceptor needs it)
     _secureStorage = const FlutterSecureStorage();
-    _sharedPreferences = await SharedPreferences.getInstance();
+    await SharedPreferences.getInstance();
 
     // Initialize device info helper
     _deviceInfoHelper = DeviceInfoHelper();
     await _deviceInfoHelper.initialize();
-
-    // Initialize Supabase
-    await Supabase.initialize(
-      url: AppConfig.supabaseUrl,
-      anonKey: AppConfig.supabaseAnonKey,
-    );
-    _supabaseClient = Supabase.instance.client;
 
     // Create local datasource first (needed by Dio interceptor and ApiClient)
     _authLocalDataSource = AuthLocalDataSourceImpl(
@@ -182,9 +171,7 @@ class InjectionContainer {
       apiClient: _apiClient,
     );
 
-    _supabaseStorageService = SupabaseStorageService(
-      supabaseClient: _supabaseClient,
-    );
+    _supabaseStorageService = SupabaseStorageService(apiClient: _apiClient);
 
     _loungeStaffRemoteDataSource = LoungeStaffRemoteDataSourceImpl(
       apiClient: _apiClient,
@@ -291,9 +278,7 @@ class InjectionContainer {
       remoteDataSource: _transportLocationRemoteDataSource,
     );
 
-    _driverProvider = DriverProvider(
-      remoteDataSource: _driverRemoteDataSource,
-    );
+    _driverProvider = DriverProvider(remoteDataSource: _driverRemoteDataSource);
   }
 
   /// Create and configure Dio instance
