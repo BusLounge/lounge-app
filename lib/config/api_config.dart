@@ -1,11 +1,17 @@
+import 'dart:io';
+
 class ApiConfig {
   // ============================================
   // BACKEND CONFIGURATION
   // ============================================
-  // Default to local backend and allow overrides with
-  // --dart-define=BACKEND_BASE_URL=...
+    // Default to the local backend (Android emulator: 10.0.2.2, iOS/Others: localhost)
   static String get _defaultBackendUrl {
-    return 'http://10.0.2.2:8080';
+    try {
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:8080';
+      }
+    } catch (_) {}
+    return 'http://localhost:8080';
   }
 
   static const String _baseUrlOverride =

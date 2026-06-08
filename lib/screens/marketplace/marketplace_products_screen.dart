@@ -4,7 +4,10 @@ import 'package:provider/provider.dart';
 import '../../config/theme_config.dart';
 import '../../core/services/image_cache_service.dart';
 import '../../domain/entities/lounge_product.dart';
+import '../../domain/entities/lounge_special_package.dart';
 import '../../presentation/providers/marketplace_provider.dart';
+import '../../presentation/providers/lounge_special_package_provider.dart';
+import 'add_special_package_screen.dart';
 import 'product_form_screen.dart';
 
 /// Screen for managing marketplace products for a lounge
@@ -26,6 +29,7 @@ class MarketplaceProductsScreen extends StatefulWidget {
 class _MarketplaceProductsScreenState extends State<MarketplaceProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _showSpecialPackages = false;
 
   @override
   void initState() {
@@ -38,7 +42,12 @@ class _MarketplaceProductsScreenState extends State<MarketplaceProductsScreen> {
 
   Future<void> _loadData() async {
     final provider = Provider.of<MarketplaceProvider>(context, listen: false);
-    await provider.loadAll(widget.loungeId);
+    final pkgProvider =
+        Provider.of<LoungeSpecialPackageProvider>(context, listen: false);
+    await Future.wait([
+      provider.loadAll(widget.loungeId),
+      pkgProvider.loadPackages(widget.loungeId),
+    ]);
   }
 
   @override
@@ -66,6 +75,7 @@ class _MarketplaceProductsScreenState extends State<MarketplaceProductsScreen> {
             );
           }
 
+          final hasSearch = _searchQuery.isNotEmpty;
           return RefreshIndicator(
             onRefresh: _loadData,
             color: AppColors.primary,
@@ -73,20 +83,48 @@ class _MarketplaceProductsScreenState extends State<MarketplaceProductsScreen> {
               children: [
                 _buildSearchBar(),
                 _buildCategoryFilter(provider),
-                Expanded(child: _buildProductsList(provider)),
+                Expanded(
+                  child: hasSearch
+                      ? _buildUniversalSearchResults(provider)
+                      : (_showSpecialPackages
+                          ? _buildSpecialPackagesList()
+                          : _buildProductsList(provider)),
+                ),
               ],
             ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _navigateToAddProduct(),
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Add Product',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // ── Add Package FAB ──────────────────────────────────────────
+          FloatingActionButton.extended(
+            heroTag: 'fab_add_package',
+            onPressed: () => _navigateToAddPackage(),
+            backgroundColor: const Color(0xFFF59E0B),
+            icon: const Icon(Icons.card_giftcard_rounded, color: Colors.white),
+            label: const Text(
+              'Add Package',
+              style: TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // ── Add Product FAB ──────────────────────────────────────────
+          FloatingActionButton.extended(
+            heroTag: 'fab_add_product',
+            onPressed: () => _navigateToAddProduct(),
+            backgroundColor: AppColors.primary,
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'Add Product',
+              style: TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -155,27 +193,92 @@ class _MarketplaceProductsScreenState extends State<MarketplaceProductsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.medium),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: provider.categories.length + 1, // +1 for "All" option
+        // +1 for "All", +1 for "Special Packages"
+        itemCount: provider.categories.length + 2,
         itemBuilder: (context, index) {
+          // "All" chip
           if (index == 0) {
             return _buildCategoryChip(
               id: null,
               name: 'All',
               count: provider.products.length,
-              isSelected: provider.selectedCategoryId == null,
-              onTap: () => provider.clearCategoryFilter(),
+              isSelected:
+                  provider.selectedCategoryId == null && !_showSpecialPackages,
+              onTap: () {
+                setState(() => _showSpecialPackages = false);
+                provider.clearCategoryFilter();
+              },
+            );
+          }
+
+          // "Special Packages" chip (last item)
+          if (index == provider.categories.length + 1) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Consumer<LoungeSpecialPackageProvider>(
+                builder: (ctx, pkgProvider, _) {
+                  final count = pkgProvider.packages.length;
+                  return FilterChip(
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.card_giftcard_rounded,
+                          size: 14,
+                          color: _showSpecialPackages
+                              ? Colors.white
+                              : AppColors.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Special Packages ($count)',
+                          style: TextStyle(
+                            color: _showSpecialPackages
+                                ? Colors.white
+                                : AppColors.primary,
+                            fontWeight: _showSpecialPackages
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                    selected: _showSpecialPackages,
+                    selectedColor: const Color(0xFFF59E0B),
+                    backgroundColor: Colors.white,
+                    checkmarkColor: Colors.white,
+                    onSelected: (_) {
+                      setState(() => _showSpecialPackages = true);
+                      provider.clearCategoryFilter();
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: _showSpecialPackages
+                            ? const Color(0xFFF59E0B)
+                            : AppColors.border,
+                      ),
+                    ),
+                  );
+                },
+              ),
             );
           }
 
           final category = provider.categories[index - 1];
-          final count = provider.getProductsCountByCategory()[category.id] ?? 0;
+          final count =
+              provider.getProductsCountByCategory()[category.id] ?? 0;
 
           return _buildCategoryChip(
             id: category.id,
             name: category.name,
             count: count,
-            isSelected: provider.selectedCategoryId == category.id,
-            onTap: () => provider.filterByCategory(category.id),
+            isSelected: provider.selectedCategoryId == category.id &&
+                !_showSpecialPackages,
+            onTap: () {
+              setState(() => _showSpecialPackages = false);
+              provider.filterByCategory(category.id);
+            },
           );
         },
       ),
@@ -594,6 +697,393 @@ class _MarketplaceProductsScreenState extends State<MarketplaceProductsScreen> {
             onPressed: _loadData,
             icon: const Icon(Icons.refresh),
             label: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Universal search filters & lists
+  // ─────────────────────────────────────────────────────────────────────
+
+  List<LoungeSpecialPackage> _filterPackages(List<LoungeSpecialPackage> packages) {
+    if (_searchQuery.isEmpty) {
+      return packages;
+    }
+    return packages.where((pkg) {
+      return pkg.packageName.toLowerCase().contains(_searchQuery) ||
+          pkg.description.toLowerCase().contains(_searchQuery);
+    }).toList();
+  }
+
+  Widget _buildUniversalSearchResults(MarketplaceProvider provider) {
+    final products = _filterProducts(provider.products);
+    final pkgProvider = Provider.of<LoungeSpecialPackageProvider>(context, listen: false);
+    final packages = _filterPackages(pkgProvider.packages);
+
+    if (products.isEmpty && packages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: 80,
+              color: AppColors.textSecondary.withOpacity(0.5),
+            ),
+            const SizedBox(height: AppSpacing.medium),
+            const Text(
+              'No results found',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.small),
+            Text(
+              'No products or packages match "$_searchQuery"',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final totalCount = packages.length + products.length;
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppSpacing.medium),
+      itemCount: totalCount,
+      itemBuilder: (context, index) {
+        if (index < packages.length) {
+          final pkg = packages[index];
+          return _buildSpecialPackageCard(pkg, pkgProvider);
+        } else {
+          final product = products[index - packages.length];
+          return _buildProductCard(product, provider);
+        }
+      },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Special packages list
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildSpecialPackagesList() {
+    return Consumer<LoungeSpecialPackageProvider>(
+      builder: (context, provider, _) {
+        if (provider.isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFFF59E0B)),
+          );
+        }
+
+        if (provider.packages.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.card_giftcard_rounded,
+                  size: 80,
+                  color: const Color(0xFFF59E0B).withOpacity(0.5),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'No special packages yet',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tap "Add Package" to create your first package',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => _navigateToAddPackage(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Package'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(AppSpacing.medium),
+          itemCount: provider.packages.length,
+          itemBuilder: (context, index) {
+            return _buildSpecialPackageCard(provider.packages[index], provider);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSpecialPackageCard(
+    LoungeSpecialPackage pkg,
+    LoungeSpecialPackageProvider provider,
+  ) {
+    // Tier-based gradient colors
+    final List<Color> gradient;
+    final IconData tierIcon;
+    switch (pkg.packageType) {
+      case SpecialPackageType.platinum:
+        gradient = const [Color(0xFF6C63FF), Color(0xFF48CAE4)];
+        tierIcon = Icons.diamond;
+        break;
+      case SpecialPackageType.gold:
+        gradient = const [Color(0xFFF59E0B), Color(0xFFEF4444)];
+        tierIcon = Icons.star_rounded;
+        break;
+      case SpecialPackageType.standard:
+        gradient = const [Color(0xFF3B82F6), Color(0xFF06B6D4)];
+        tierIcon = Icons.verified_rounded;
+        break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: gradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.first.withOpacity(0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // ── Background decorative circle ──────────────────────────────
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
+          ),
+          // ── Content ───────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image or tier icon
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: pkg.imageUrl != null && pkg.imageUrl!.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: OptimizedCachedImage(
+                            imageUrl: pkg.imageUrl!,
+                            fit: BoxFit.cover,
+                            width: 70,
+                            height: 70,
+                            quality: 'sd',
+                            errorWidget: (_, __, ___) => Icon(
+                              tierIcon,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                        )
+                      : Icon(tierIcon, color: Colors.white, size: 32),
+                ),
+                const SizedBox(width: 14),
+                // Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Tier badge + name
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              pkg.packageType.displayName.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        pkg.packageName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        pkg.description,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 10),
+                      // Price
+                      Text(
+                        'LKR ${pkg.price}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Action buttons
+                Column(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined,
+                          color: Colors.white, size: 20),
+                      onPressed: () => _navigateToEditPackage(pkg),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: Colors.white.withOpacity(0.8),
+                        size: 20,
+                      ),
+                      onPressed: () =>
+                          _showDeletePackageConfirmation(pkg, provider),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Navigation
+  // ─────────────────────────────────────────────────────────────────────
+
+  void _navigateToAddPackage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddSpecialPackageScreen(
+          loungeId: widget.loungeId,
+          loungeName: widget.loungeName,
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        final pkgProvider = Provider.of<LoungeSpecialPackageProvider>(
+            context,
+            listen: false);
+        pkgProvider.loadPackages(widget.loungeId);
+        setState(() => _showSpecialPackages = true);
+      }
+    });
+  }
+
+  void _navigateToEditPackage(LoungeSpecialPackage pkg) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddSpecialPackageScreen(
+          loungeId: widget.loungeId,
+          loungeName: widget.loungeName,
+          package: pkg,
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        Provider.of<LoungeSpecialPackageProvider>(context, listen: false)
+            .loadPackages(widget.loungeId);
+      }
+    });
+  }
+
+  void _showDeletePackageConfirmation(
+    LoungeSpecialPackage pkg,
+    LoungeSpecialPackageProvider provider,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Package'),
+        content: Text(
+          'Are you sure you want to delete "${pkg.packageName}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final success = await provider.deletePackage(
+                  widget.loungeId, pkg.id);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? 'Package deleted successfully'
+                          : 'Failed to delete package',
+                    ),
+                    backgroundColor:
+                        success ? AppColors.success : AppColors.error,
+                  ),
+                );
+              }
+            },
+            style:
+                ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete'),
           ),
         ],
       ),

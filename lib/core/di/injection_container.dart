@@ -9,6 +9,7 @@ import '../../data/datasources/staff_remote_datasource.dart';
 import '../../data/datasources/lounge_owner_remote_datasource.dart';
 import '../../data/datasources/lounge_remote_datasource.dart';
 import '../../data/datasources/marketplace_remote_datasource.dart';
+import '../../data/datasources/lounge_special_package_remote_datasource.dart';
 import '../../data/datasources/supabase_storage_service.dart';
 import '../../data/datasources/lounge_staff_remote_datasource.dart';
 import '../../data/datasources/lounge_booking_remote_datasource.dart';
@@ -21,6 +22,7 @@ import '../../data/repositories/staff_repository_impl.dart';
 import '../../data/repositories/lounge_owner_repository_impl.dart';
 import '../../data/repositories/lounge_repository_impl.dart';
 import '../../data/repositories/marketplace_repository.dart';
+import '../../data/repositories/lounge_special_package_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/staff_repository.dart';
 import '../../domain/repositories/lounge_owner_repository.dart';
@@ -51,6 +53,7 @@ import '../../presentation/providers/staff_provider.dart';
 import '../../presentation/providers/lounge_owner_provider.dart';
 import '../../presentation/providers/registration_provider.dart';
 import '../../presentation/providers/marketplace_provider.dart';
+import '../../presentation/providers/lounge_special_package_provider.dart';
 import '../../presentation/providers/role_selection_provider.dart';
 import '../../presentation/providers/lounge_staff_provider.dart';
 import '../../presentation/providers/lounge_booking_provider.dart';
@@ -84,6 +87,7 @@ class InjectionContainer {
   late LoungeOwnerRemoteDataSource _loungeOwnerRemoteDataSource;
   late LoungeRemoteDataSource _loungeRemoteDataSource;
   late MarketplaceRemoteDataSource _marketplaceRemoteDataSource;
+  late LoungeSpecialPackageRemoteDataSource _loungeSpecialPackageRemoteDataSource;
   late SupabaseStorageService _supabaseStorageService;
   late LoungeStaffRemoteDataSource _loungeStaffRemoteDataSource;
   late LoungeBookingRemoteDataSource _loungeBookingRemoteDataSource;
@@ -96,6 +100,7 @@ class InjectionContainer {
   late LoungeOwnerRepository _loungeOwnerRepository;
   late LoungeRepository _loungeRepository;
   late MarketplaceRepository _marketplaceRepository;
+  late LoungeSpecialPackageRepository _loungeSpecialPackageRepository;
 
   // Use cases - Auth
   late SendOtpUseCase _sendOtpUseCase;
@@ -122,6 +127,7 @@ class InjectionContainer {
   late LoungeOwnerProvider _loungeOwnerProvider;
   late RegistrationProvider _registrationProvider;
   late MarketplaceProvider _marketplaceProvider;
+  late LoungeSpecialPackageProvider _loungeSpecialPackageProvider;
   late RoleSelectionProvider _roleSelectionProvider;
   late LoungeStaffProvider _loungeStaffProvider;
   late LoungeBookingProvider _loungeBookingProvider;
@@ -171,6 +177,9 @@ class InjectionContainer {
       apiClient: _apiClient,
     );
 
+    _loungeSpecialPackageRemoteDataSource =
+        LoungeSpecialPackageRemoteDataSourceImpl(apiClient: _apiClient);
+
     _supabaseStorageService = SupabaseStorageService(apiClient: _apiClient);
 
     _loungeStaffRemoteDataSource = LoungeStaffRemoteDataSourceImpl(
@@ -207,6 +216,10 @@ class InjectionContainer {
 
     _marketplaceRepository = MarketplaceRepositoryImpl(
       remoteDataSource: _marketplaceRemoteDataSource,
+    );
+
+    _loungeSpecialPackageRepository = LoungeSpecialPackageRepository(
+      dataSource: _loungeSpecialPackageRemoteDataSource,
     );
 
     // ========== Use Cases - Auth ==========
@@ -260,6 +273,10 @@ class InjectionContainer {
 
     _marketplaceProvider = MarketplaceProvider(
       repository: _marketplaceRepository,
+    );
+
+    _loungeSpecialPackageProvider = LoungeSpecialPackageProvider(
+      repository: _loungeSpecialPackageRepository,
     );
 
     _roleSelectionProvider = RoleSelectionProvider(
@@ -368,6 +385,8 @@ class InjectionContainer {
   LoungeOwnerProvider get loungeOwnerProvider => _loungeOwnerProvider;
   RegistrationProvider get registrationProvider => _registrationProvider;
   MarketplaceProvider get marketplaceProvider => _marketplaceProvider;
+  LoungeSpecialPackageProvider get loungeSpecialPackageProvider =>
+      _loungeSpecialPackageProvider;
   RoleSelectionProvider get roleSelectionProvider => _roleSelectionProvider;
   LoungeStaffProvider get loungeStaffProvider => _loungeStaffProvider;
   LoungeBookingProvider get loungeBookingProvider => _loungeBookingProvider;

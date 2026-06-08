@@ -14,6 +14,7 @@ import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/lounge_owner_provider.dart';
 import 'presentation/providers/registration_provider.dart';
 import 'presentation/providers/marketplace_provider.dart';
+import 'presentation/providers/lounge_special_package_provider.dart';
 import 'presentation/providers/lounge_staff_provider.dart';
 import 'presentation/providers/lounge_booking_provider.dart';
 import 'presentation/providers/transport_location_provider.dart';
@@ -217,6 +218,9 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider<MarketplaceProvider>.value(
           value: widget.di.marketplaceProvider,
+        ),
+        ChangeNotifierProvider<LoungeSpecialPackageProvider>.value(
+          value: widget.di.loungeSpecialPackageProvider,
         ),
         ChangeNotifierProvider.value(value: widget.di.roleSelectionProvider),
         ChangeNotifierProvider<LoungeStaffProvider>.value(

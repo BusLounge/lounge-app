@@ -86,6 +86,18 @@ class SupabaseStorageService {
     );
   }
 
+  /// Upload a special package image for lounge marketplace.
+  Future<String> uploadSpecialPackageImage({
+    required File imageFile,
+    required String loungeId,
+  }) async {
+    return _uploadImage(
+      '/api/v1/uploads/lounge-special-packages/$loungeId/image',
+      imageFile: imageFile,
+      fields: {'lounge_id': loungeId},
+    );
+  }
+
   /// Delete an image from storage
   Future<void> deleteImage({
     required String url,
