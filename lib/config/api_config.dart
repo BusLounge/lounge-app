@@ -1,17 +1,13 @@
-import 'dart:io';
-
 class ApiConfig {
   // ============================================
   // BACKEND CONFIGURATION
   // ============================================
-    // Default to the local backend (Android emulator: 10.0.2.2, iOS/Others: localhost)
+    // Default to the Choreo backend and allow overrides with
+    // --dart-define=BACKEND_BASE_URL=...
   static String get _defaultBackendUrl {
-    try {
-      if (Platform.isAndroid) {
-        return 'http://10.0.2.2:8080';
-      }
-    } catch (_) {}
-    return 'http://localhost:8080';
+    // LOCAL BACKEND — Android emulator reaches the host machine via 10.0.2.2
+    // To switch back to Choreo, pass --dart-define=BACKEND_BASE_URL=<choreo_url>
+    return 'http://10.0.2.2:8080';
   }
 
   static const String _baseUrlOverride =

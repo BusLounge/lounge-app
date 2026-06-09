@@ -56,6 +56,20 @@ class LoungeSpecialPackageProvider extends ChangeNotifier {
     required SpecialPackageType packageType,
     required String description,
     required String price,
+    // Extended
+    int? pax,
+    bool? transportStatus,
+    TransportMode? transportMode,
+    bool? mealStatus,
+    bool? breakfastStatus,
+    List<String>? breakfastType,
+    bool? lunchStatus,
+    List<String>? lunchType,
+    bool? eveningSnackStatus,
+    List<String>? eveningSnackType,
+    bool? dinnerStatus,
+    List<String>? dinnerType,
+    List<String>? places,
   }) async {
     _isSubmitting = true;
     _error = null;
@@ -73,6 +87,19 @@ class LoungeSpecialPackageProvider extends ChangeNotifier {
         isActive: true,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        pax: pax,
+        transportStatus: transportStatus,
+        transportMode: transportMode,
+        mealStatus: mealStatus,
+        breakfastStatus: breakfastStatus,
+        breakfastType: breakfastType,
+        lunchStatus: lunchStatus,
+        lunchType: lunchType,
+        eveningSnackStatus: eveningSnackStatus,
+        eveningSnackType: eveningSnackType,
+        dinnerStatus: dinnerStatus,
+        dinnerType: dinnerType,
+        places: places,
       );
 
       final created = await _repository.createSpecialPackage(loungeId, model);
@@ -95,6 +122,20 @@ class LoungeSpecialPackageProvider extends ChangeNotifier {
     required SpecialPackageType packageType,
     required String description,
     required String price,
+    // Extended
+    int? pax,
+    bool? transportStatus,
+    TransportMode? transportMode,
+    bool? mealStatus,
+    bool? breakfastStatus,
+    List<String>? breakfastType,
+    bool? lunchStatus,
+    List<String>? lunchType,
+    bool? eveningSnackStatus,
+    List<String>? eveningSnackType,
+    bool? dinnerStatus,
+    List<String>? dinnerType,
+    List<String>? places,
   }) async {
     _isSubmitting = true;
     _error = null;
@@ -112,10 +153,22 @@ class LoungeSpecialPackageProvider extends ChangeNotifier {
         isActive: true,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        pax: pax,
+        transportStatus: transportStatus,
+        transportMode: transportMode,
+        mealStatus: mealStatus,
+        breakfastStatus: breakfastStatus,
+        breakfastType: breakfastType,
+        lunchStatus: lunchStatus,
+        lunchType: lunchType,
+        eveningSnackStatus: eveningSnackStatus,
+        eveningSnackType: eveningSnackType,
+        dinnerStatus: dinnerStatus,
+        dinnerType: dinnerType,
+        places: places,
       );
 
-      final updated = await _repository.updateSpecialPackage(
-          loungeId, packageId, model);
+      final updated = await _repository.updateSpecialPackage(loungeId, packageId, model);
       _packages = _packages
           .map((p) => p.id == packageId ? updated : p)
           .cast<LoungeSpecialPackage>()

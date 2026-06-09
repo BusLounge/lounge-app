@@ -1,15 +1,8 @@
-import 'dart:io';
-
 class AppConfig {
-  // API configuration - local backend.
+  // API configuration - Choreo backend by default.
   // Override with --dart-define=BACKEND_BASE_URL=...
   static String get _defaultBackendUrl {
-    try {
-      if (Platform.isAndroid) {
-        return 'http://10.0.2.2:8080';
-      }
-    } catch (_) {}
-    return 'http://localhost:8080';
+    return 'https://6ed89a53-55ef-45f1-a497-e383bfedea00-dev.e1-us-east-azure.choreoapis.dev/default/backendloungeowner/v1.0';
   }
 
   static const String _backendUrlOverride =
