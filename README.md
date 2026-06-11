@@ -1,4 +1,4 @@
-# lounge_owner_app
+# lounge_app
 
 A new Flutter project.
 
